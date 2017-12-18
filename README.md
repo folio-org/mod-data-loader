@@ -19,9 +19,11 @@ Some notes:
 
 It is best to attach marc files with the same amount of records as the batch size - this is not mandatory (default batch size is 50,000 records and can be changed via the `batchSize` query parameter)
 
+MarcEdit can be used to split very large Marc records.
+
 You can call the `/load/marc-data` API multiple times on different marc files - this should improve loading performance (the amount of concurrent calls depends on the amount of hardware on the server)
 
-A records position in the uploaded file will be present in the `X-Unprocessed` header if the marc record was not parsed correctly.
+A records position in the uploaded file will be present in the `X-Unprocessed` header for each marc record that was not parsed correctly.
 
 Currently, if the database is down, or the tenant in the x-okapi-tenant does not exist, the api will return success but will do nothing. This is an issue in the RMB framework used by mod-inventory-storage (errors will be logged in the mod-inventory-storage log, but the message is not propogated at this time)
 
