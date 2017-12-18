@@ -1,0 +1,159 @@
+{
+  "100": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "contributors.name"
+    },
+    {
+      "subfield": [
+        "6"
+      ],
+      "description": "",
+      "target": "contributors.contributorTypeId"
+    }
+  ],
+  "245": [
+    {
+      "subfield": [
+        "6"
+      ],
+      "description": "",
+      "target": "title_id"
+    },
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "title"
+    },
+    {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "alternativeTitles"
+    }
+  ],
+  "246": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "alternativeTitles"
+    }
+  ],
+  "250": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "edition"
+    }
+  ],
+  "260": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "publication.place"
+    },
+    {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "publication.publisher"
+    },
+    {
+      "subfield": [
+        "c"
+      ],
+      "description": "",
+      "target": "publication.dateOfPublication",
+      "rule": {
+        "type": "regex",
+        "value": "1[5-9]{3}|2[0-9]{3}"
+      }
+    }
+  ],
+  "300": [
+    {
+      "subfield": [
+        "a",
+        "c"
+      ],
+      "description": "",
+      "target": "physicalDescriptions"
+    }
+  ],
+  "500": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "notes"
+    }
+  ],
+  "651": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "subjects"
+    }
+  ],
+  "690": [
+    {
+      "subfield": [
+        "a",
+        "y",
+        "5"
+      ],
+      "description": "local subjects",
+      "target": "subjects"
+    }
+  ],
+  "710": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "contributors.name"
+    },
+    {
+      "subfield": [
+        "5"
+      ],
+      "description": "",
+      "target": "contributors.contributorTypeId"
+    }
+  ],
+  "786": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "source"
+    }
+  ],
+  "035": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "identifiers"
+    }
+  ]
+}

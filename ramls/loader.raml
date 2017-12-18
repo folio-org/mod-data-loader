@@ -1,0 +1,103 @@
+#%RAML 0.8
+
+title: Loader API
+baseUri: http://localhost:8081/{version}
+version: v1
+
+traits:
+  - secured: !include inventory/raml-util/traits/auth.raml
+  - validate: !include inventory/raml-util/traits/validation.raml
+schemas:
+  - errors: !include inventory/raml-util/schemas/errors.schema
+  - error.schema: !include inventory/raml-util/schemas/error.schema
+  - parameters.schema: !include inventory/raml-util/schemas/parameters.schema
+
+/load:
+  /marc-rules:
+    post:
+      is: [secured]
+      description: |
+          Uploads a rules.json file and saves it per tenant in memory only!
+      body:
+        application/octet-stream:
+          example: !include rules.json            
+      responses:
+        201:
+          description: "Saved"
+          headers:
+            Location:
+              description: URI to the created <<resourcePathName|!singularize>> item
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+    get:
+      responses:
+        200:
+          description: "Get"
+          body:
+            application/json:
+              example: !include rules.json
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+  /marc-data:
+    post:
+      is: [secured]
+      description: |
+          Uploads a file and saves it to tenants instance table
+      queryParameters:
+        storageURL:
+          displayName: StorageURL
+          type: string
+          description: host and port of the inventory storage module
+          example: http://host:port
+          required: true
+        bulkSize:
+          displayName: BulkSize
+          type: integer
+          description: loader will batch this amount of records together into a transaction and persist
+          required: false
+          default: 50000
+      body:
+        application/octet-stream:
+      responses:
+        201:
+          description: "Saved"
+          headers:
+            X-Unprocessed:
+              description: line # of unprocessed records
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+    get:
+      responses:
+        405:
+          description: "Not implemented"
+          body:
+            text/plain:
+              example: |
+                "Not implemented"

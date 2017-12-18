@@ -1,0 +1,14 @@
+{
+  "id": "0b96a642-5e7f-452d-9cae-9cee66c9a892",
+  "instanceId": "cf23adf0-61ba-4887-bf82-956c4aae2260",
+  "title": "Uprooted",
+  "barcode": "645398607547",
+  "status": {
+    "name": "Available"
+  },
+  "materialTypeId": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
+  "permanentLoanTypeId": "2b94c631-fca9-a892-c730-03ee529ffe27",
+  "temporaryLoanTypeId": "e8b311a6-3b21-03f2-2269-dd9310cb2d0e",
+  "permanentLocationId": "d9cd0bed-1b49-4b5e-a7bd-064b8d177231",
+  "temporaryLocationId": "0df935eb-f3f4-4741-9ac6-33c500174b96"
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "instanceId": {
+      "type": "string"
+    },
+    "holdingsRecordId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "barcode": {
+      "type": "string"
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "materialTypeId": {
+      "type": "string"
+    },
+    "permanentLoanTypeId": {
+      "type": "string"
+    },
+    "temporaryLoanTypeId": {
+      "type": "string"
+    },
+    "permanentLocationId": {
+      "type": "string"
+    },
+    "temporaryLocationId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "materialTypeId",
+    "permanentLoanTypeId"
+  ]
+}

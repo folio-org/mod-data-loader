@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "alternativeTitles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "edition": {
+      "type": "string"
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "identifiers": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "identifierTypeId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "identifierTypeId"
+        ]
+      }
+    },
+    "creators": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "creatorTypeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "creatorTypeId"
+        ]
+      }
+    },
+    "contributors": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "contributorTypeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "contributorTypeId"
+        ]
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "classifications": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "properties": {
+          "classificationNumber": {
+            "type": "string"
+          },
+          "classificationTypeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classificationNumber",
+          "classificationTypeId"
+        ]
+      }
+    },
+    "publication": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "publisher": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "dateOfPublication": {
+            "type": "string"
+          }
+        },
+        "uniqueItems": true
+      }
+    },
+    "urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "instanceTypeId": {
+      "type": "string"
+    },
+    "instanceFormatId": {
+      "type": "string"
+    },
+    "physicalDescriptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "languages": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "source",
+    "title",
+    "creators",
+    "instanceTypeId"
+  ]
+}

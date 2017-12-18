@@ -1,0 +1,11 @@
+{
+  "mtypes": [
+    {
+      "name": "book"
+    },
+    {
+      "name": "dvd"
+    }
+  ],
+  "totalRecords": 2
+}

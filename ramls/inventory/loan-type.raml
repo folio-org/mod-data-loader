@@ -1,0 +1,63 @@
+#%RAML 0.8
+title: Loan Types API
+version: v2.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Loan Types API
+    content: This documents the API calls that can be made to query and manage loan types of the system
+
+schemas:
+  - loantype.json: !include loantype.json
+  - loantypes: !include loantypes.json
+  - item.json: !include item.json
+  - items: !include items.json
+  - errors: !include raml-util/schemas/errors.schema
+  - error.schema: !include raml-util/schemas/error.schema
+  - parameters.schema: !include raml-util/schemas/parameters.schema
+
+traits:
+  - secured: !include raml-util/traits/auth.raml
+  - pageable: !include raml-util/traits/pageable.raml
+  - searchable: !include raml-util/traits/searchable.raml
+  - language: !include raml-util/traits/language.raml
+  - validate: !include raml-util/traits/validation.raml
+
+resourceTypes:
+  - collection: !include raml-util/rtypes/collection.raml
+  - collection-item: !include raml-util/rtypes/item-collection.raml
+  - get-delete-only: !include raml-util/rtypes/get-delete.raml
+
+/loan-types:
+  type:
+    collection:
+      exampleCollection: !include examples/loantypes.json
+      exampleItem: !include examples/loantype.json
+      schemaCollection: loantypes
+      schemaItem: loantype.json
+  get:
+    is: [
+      searchable: {description: "with valid searchable fields", example: "name=aaa"},
+      pageable
+    ]
+    description: Return a list of loan types
+  delete:
+    description: "Delete all loan types"
+    responses:
+      204:
+        description: "All loan types deleted"
+      500:
+        description: "Internal server error, e.g. due to misconfiguration"
+        body:
+          text/plain:
+            example: "Internal server error, contact administrator"
+  post:
+    description: Create a new loan type
+    is: [validate]
+  /{loantypeId}:
+    description: Pass in the loan type code
+    type:
+      collection-item:
+        exampleItem: !include examples/loantype.json
+        schema: loantype.json
