@@ -224,10 +224,11 @@ public class LoaderAPI implements LoadResource {
                   Object val = getValue(object, embeddedFields, sb.toString());
                   buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
                   createNewComplexObj = false;
+                  ((Instance)object).setId(UUID.randomUUID().toString());
                 }
               }
             }
-            String res = managePushToDB(importSQLStatement, tenantId, ObjectMapperTool.getMapper().writeValueAsString(object), false, okapiHeaders);
+            String res = managePushToDB(importSQLStatement, tenantId, object, false, okapiHeaders);
             if(res != null){
               block.fail(new Exception(res));
               log.error(res);
@@ -237,7 +238,7 @@ public class LoaderAPI implements LoadResource {
               return;
             }
           }
-          String res = managePushToDB(importSQLStatement, tenantId, ObjectMapperTool.getMapper().writeValueAsString(object), true, okapiHeaders);
+          String res = managePushToDB(importSQLStatement, tenantId, object, true, okapiHeaders);
           if(res != null){
             block.fail(new Exception(res));
             log.error(res);
@@ -280,16 +281,16 @@ public class LoaderAPI implements LoadResource {
     });
   }
 
-  private String managePushToDB(StringBuffer importSQLStatement, String tenantId, String record, boolean done, Map<String, String> okapiHeaders) throws Exception {
+  private String managePushToDB(StringBuffer importSQLStatement, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
     if (importSQLStatement.length() == 0) {
       importSQLStatement.append("COPY " + tenantId
           + "_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
       importSQLStatement.append(System.lineSeparator());
     }
-    importSQLStatement.append(UUID.randomUUID().toString()).append("|").append(record).append(
+    importSQLStatement.append(((Instance)record).getId()).append("|").append(ObjectMapperTool.getMapper().writeValueAsString(record)).append(
       System.lineSeparator());
     counter++;
-    if (counter == bulkSize || done) {
+    if (counter == (bulkSize+1) || done) {
       counter = 0;
       importSQLStatement.append("\\.");
 /*
