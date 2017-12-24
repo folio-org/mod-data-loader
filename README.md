@@ -25,5 +25,54 @@ You can call the `/load/marc-data` API multiple times on different marc files - 
 
 A records position in the uploaded file will be present in the `X-Unprocessed` header for each marc record that was not parsed correctly.
 
-Currently, if the database is down, or the tenant in the x-okapi-tenant does not exist, the api will return success but will do nothing. This is an issue in the RMB framework used by mod-inventory-storage (errors will be logged in the mod-inventory-storage log, but the message is not propogated at this time)
+Available functions:
 
+1. Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rule may be declared.
+
+```json
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "7"
+            },
+            {
+              "type": "char_select",
+              "parameter": "1",
+              "value": "8"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "Books"
+        }
+      ]
+```
+
+Available functions:
+
+`char_select` - select a specific char (parameter) from the field and compare it to the indicated value (value). `LDR` indicates that the data from the leader field should be used for this condition and not the data of the field itself
+`remove_ending_punc` remove punctuation at the end of the data field
+`trim` remove leading and trailing spaces from the data field
+
+Example:
+```
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc,trim"
+            }
+          ]
+        }
+      ]
+```
+Note that you can indicate the use of multiple functions using the comma delimiter. This is only possible for functions that do not receive parameters
+
+Currently, if the database is down, or the tenant in the x-okapi-tenant does not exist, the api will return success but will do nothing. This is an issue in the RMB framework used by mod-inventory-storage (errors will be logged in the mod-inventory-storage log, but the message is not propogated at this time)
