@@ -56,9 +56,9 @@ Control fields can be used to insert constant values into instance fields. For e
 
 #### Available functions
 
-`char_select` - select a specific char (parameter) from the field and compare it to the indicated value (value) - ranges can be passed in as well (ex. 1-3). `LDR` indicates that the data from the leader field should be used for this condition and not the data of the field itself
-`remove_ending_punc` remove punctuation at the end of the data field
-`trim` remove leading and trailing spaces from the data field
+ - `char_select` - select a specific char (parameter) from the field and compare it to the indicated value (value) - ranges can be passed in as well (ex. 1-3). `LDR` indicates that the data from the leader field should be used for this condition and not the data of the field itself
+ - `remove_ending_punc` remove punctuation at the end of the data field
+ - `trim` remove leading and trailing spaces from the data field
 
 Example:
 ```
