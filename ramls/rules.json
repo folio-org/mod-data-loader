@@ -1,11 +1,66 @@
 {
+  "008": [
+    {
+      "subfield": [],
+      "description": "",
+      "target": "instanceTypeId",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "7"
+            },
+            {
+              "type": "char_select",
+              "parameter": "1",
+              "value": "8"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "book"
+        },
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "1-2",
+              "value": "78"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "Books"
+        }
+      ]
+    }
+  ],
   "100": [
     {
       "subfield": [
         "a"
       ],
       "description": "",
-      "target": "contributors.name"
+      "target": "contributors.name",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
+        }
+      ]
     },
     {
       "subfield": [
@@ -62,7 +117,16 @@
         "a"
       ],
       "description": "",
-      "target": "publication.place"
+      "target": "publication.place",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
+        }
+      ]
     },
     {
       "subfield": [
@@ -77,10 +141,15 @@
       ],
       "description": "",
       "target": "publication.dateOfPublication",
-      "rule": {
-        "type": "regex",
-        "value": "1[5-9]{3}|2[0-9]{3}"
-      }
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
+        }
+      ]
     }
   ],
   "300": [
@@ -128,7 +197,16 @@
         "a"
       ],
       "description": "",
-      "target": "contributors.name"
+      "target": "contributors.name",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc,trim"
+            }
+          ]
+        }
+      ]
     },
     {
       "subfield": [
