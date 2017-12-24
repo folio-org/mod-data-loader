@@ -36,7 +36,10 @@ import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.marc4j.MarcStreamReader;
+import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
+import org.marc4j.marc.Leader;
+import org.marc4j.marc.Record;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -136,9 +139,9 @@ public class LoaderAPI implements LoadResource {
       return;
     }
 
-    JsonObject rules = tenantRulesMap.get(tenantId);
+    JsonObject rulesFile = tenantRulesMap.get(tenantId);
 
-    if(rules == null){
+    if(rulesFile == null){
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostLoadMarcDataResponse.withPlainBadRequest("no rules file found for tenant " + tenantId)));
       return;
@@ -175,25 +178,93 @@ public class LoaderAPI implements LoadResource {
           while (reader.hasNext()) {
             processedCount++;
             List<DataField> df = null;
+            List<ControlField> cf = null;
+            Leader leader = null;
             try {
-              df = reader.next().getDataFields();
+              Record record = reader.next();
+              df = record.getDataFields();
+              cf = record.getControlFields();
+              leader = record.getLeader();
             } catch (Exception e) {
               unprocessed.append("#").append(processedCount).append(" ");
               log.error(e);
               continue;
             }
+            Iterator<ControlField> ctrlIter = cf.iterator();
             Iterator<DataField> iter = df.iterator();
             object = new Instance();
+            while (ctrlIter.hasNext()) {
+              //no subfields
+              ControlField controlField = ctrlIter.next();
+              //get entry for this control field in the rules.json file
+              JsonArray entriesForControlField = rulesFile.getJsonArray(controlField.getTag());
+              if (entriesForControlField != null) {
+                for (int i = 0; i < entriesForControlField.size(); i++) {
+                  JsonObject entryForControlField = entriesForControlField.getJsonObject(i);
+                  //get rules - each rule can contain multiple conditions that need to be met and a
+                  //value to inject in case all the conditions are met
+                  JsonArray rules = entryForControlField.getJsonArray("rules");
+                  Object rememberComplexObj[] = new Object[] { null };
+                  boolean createNewComplexObj = true;
+                  //iterate on each rule
+                  for (int j = 0; j < rules.size(); j++) {
+                    //the content of the control field
+                    String data = controlField.getData();
+                    //a single rule entry in the rules
+                    JsonObject rule = rules.getJsonObject(j);
+                    //the conditions in the rule
+                    JsonArray conditions = rule.getJsonArray("conditions");
+                    //the constant value to use if the conditions of this rule are met
+                    String value = rule.getString("value");
+                    boolean conditionsMet = true;
+                    //each rule has conditions, if they are all met,
+                    //set the target field in the instance to the constant value of the rule
+                    for (int k = 0; k < conditions.size(); k++) {
+                      JsonObject condition = conditions.getJsonObject(k);
+                      String function = condition.getString("type");
+                      if(condition.getBoolean("LDR") != null){
+                        //the rule also has a condition on the leader field
+                        data = leader.toString();
+                      }
+                      String c = NormalizationFunctions.runFunction(function, data, condition.getString("parameter"));
+                      if(!c.equals(condition.getString("value"))){
+                        //the condition's value needs to equal the functions output (which receives
+                        //the marc field's data with the "parameter" field in the rules.json allowing
+                        //the function to receive parameters to specify what part of the marc's field data
+                        //to use for the comparison
+                        conditionsMet = false;
+                      }
+                    }
+                    if(!conditionsMet){
+                      continue;
+                    }
+                    //if conditionsMet = true, then all conditions of a specific rule were met
+                    //and we can set the target to the rule's value
+                    String target = entryForControlField.getString("target");
+                    String embeddedFields[] = target.split("\\.");
+                    if (!isMappingValid(object, embeddedFields)) {
+                      log.debug("bad mapping " + rule.encode());
+                      continue;
+                    }
+                    Object val = getValue(object, embeddedFields, value);
+                    buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+                    createNewComplexObj = false;
+                  }
+                }
+              }
+            }
             while (iter.hasNext()) {
               // this is an iterator on the marc record, field by field
               boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
               Object rememberComplexObj[] = new Object[] { null };
               DataField dataField = iter.next();
-              JsonArray ruleForField = rules.getJsonArray(dataField.getTag());
+              JsonArray ruleForField = rulesFile.getJsonArray(dataField.getTag());
               if (ruleForField != null) {
                 for (int i = 0; i < ruleForField.size(); i++) {
                   JsonObject subFieldRule = ruleForField.getJsonObject(i);
                   JsonArray subFieldsToApplyToRule = subFieldRule.getJsonArray("subfield");
+                  JsonArray rulesDecl = subFieldRule.getJsonArray("rules");
+                  String value = subFieldRule.getString("value");
                   StringBuffer sb = new StringBuffer();
                   for (int j = 0; j < subFieldsToApplyToRule.size(); j++) {
                     // get the field->subfield that is associated with the field->subfield rule
@@ -203,6 +274,37 @@ public class LoaderAPI implements LoadResource {
                       String data = subField.getData();
                       char sub = subField.getCode();
                       if (sub == subFieldForRule.toCharArray()[0]) {
+                        if(rulesDecl != null){
+                          for (int k = 0; k < rulesDecl.size(); k++) {
+                            JsonObject subRule = rulesDecl.getJsonObject(k);
+                            JsonArray conditions = subRule.getJsonArray("conditions");
+                            String constVal = subRule.getString("value");
+                            boolean conditionsMet = true;
+                            //each rule has conditions, if they are all met, then mark
+                            //continue processing the next condition, if all conditions are met
+                            //set the target to the value of the rule
+                            for (int m = 0; m < conditions.size(); m++) {
+                              JsonObject condition = conditions.getJsonObject(m);
+                              String []function = condition.getString("type").split(",");
+                              for (int l = 0; l < function.length; l++) {
+                                String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
+                                if(condition.getString("value") != null && !c.equals(condition.getString("value"))){
+                                  conditionsMet = false;
+                                }
+                                else if (constVal == null){
+                                  //if there is no val to use as a replacement , then assume the function
+                                  //is doing the value update and set the data to the returned value
+                                  data = c;
+                                }
+                              }
+                            }
+
+                            if(!conditionsMet){
+                              continue;
+                            }
+                          }
+
+                        }
                         if (sb.length() > 0) {
                           sb.append(" ");
                         }
