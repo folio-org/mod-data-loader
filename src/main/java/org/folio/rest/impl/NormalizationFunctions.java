@@ -50,8 +50,7 @@ public class NormalizationFunctions {
   }
 
   private static String modified(final String input, int pos){
-    int val = Character.getNumericValue(input.charAt(pos));
-    if(!Character.isLetterOrDigit(val)){
+    if(!Character.isAlphabetic(input.charAt(pos))){
       return input.substring(0, input.length()-1);
     }
     return input;

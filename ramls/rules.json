@@ -40,7 +40,14 @@
               "LDR": true
             }
           ],
-          "value": "Books"
+          "value": "Books."
+        },
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
         }
       ]
     }
@@ -59,7 +66,25 @@
               "type": "remove_ending_punc"
             }
           ]
-        }
+        },
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace('  ' , ' ');"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc",
+              "parameter": "",
+              "value": "Books"
+            }
+          ],
+          "value": "Books"
+        }        
       ]
     },
     {
@@ -76,14 +101,24 @@
         "6"
       ],
       "description": "",
-      "target": "title_id"
+      "target": "alternativeTitles"
     },
     {
       "subfield": [
         "a"
       ],
       "description": "",
-      "target": "title"
+      "target": "title",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace('  ' , ' ');"
+            }
+          ]
+        }
+      ]
     },
     {
       "subfield": [
@@ -145,7 +180,8 @@
         {
           "conditions": [
             {
-              "type": "remove_ending_punc"
+              "type": "custom, trim",
+              "value": "DATA.replace(/\\D/g,'');"
             }
           ]
         }

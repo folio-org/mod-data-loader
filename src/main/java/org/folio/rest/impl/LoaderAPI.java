@@ -14,6 +14,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import javax.script.Bindings;
+import javax.script.Compilable;
+import javax.script.CompiledScript;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.SimpleBindings;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
@@ -203,6 +209,9 @@ public class LoaderAPI implements LoadResource {
 
     long start = System.currentTimeMillis();
 
+    ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
+    Map<Integer, CompiledScript> preCompiledJS = new HashMap<>();
+
     JsonObject rulesFile = tenantRulesMap.get(tenantId);
 
     if(rulesFile == null){
@@ -300,52 +309,105 @@ public class LoaderAPI implements LoadResource {
           boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
           Object rememberComplexObj[] = new Object[] { null };
           DataField dataField = iter.next();
-          JsonArray ruleForField = rulesFile.getJsonArray(dataField.getTag());
-          if (ruleForField != null) {
-            for (int i = 0; i < ruleForField.size(); i++) {
-              JsonObject subFieldRule = ruleForField.getJsonObject(i);
-              JsonArray subFieldsToApplyToRule = subFieldRule.getJsonArray("subfield");
-              JsonArray rulesDecl = subFieldRule.getJsonArray("rules");
-              String value = subFieldRule.getString("value");
+          JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
+          if (mappingEntry != null) {
+            //there is a mapping associated with this marc field
+            for (int i = 0; i < mappingEntry.size(); i++) {
+              //there could be multiple mapping entries, specifically different mappings
+              //per subfield in the marc field
+              JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
+              //a single mapping entry can also map multiple subfields to a specific field in
+              //the instance
+              JsonArray subFields = subFieldMapping.getJsonArray("subfield");
+              //it can be a one to one mapping, or there could be rules to apply prior to the mapping
+              JsonArray rules = subFieldMapping.getJsonArray("rules");
               StringBuffer sb = new StringBuffer();
-              for (int j = 0; j < subFieldsToApplyToRule.size(); j++) {
+              //iterate over the subfields in the mapping entry
+              for (int j = 0; j < subFields.size(); j++) {
                 // get the field->subfield that is associated with the field->subfield rule
                 // in the rules.json file
-                String subFieldForRule = subFieldsToApplyToRule.getString(j);
+                String subFieldCode = subFields.getString(j);
                 dataField.getSubfields().forEach(subField -> {
                   String data = subField.getData();
                   char sub = subField.getCode();
-                  if (sub == subFieldForRule.toCharArray()[0]) {
-                    if(rulesDecl != null){
-                      for (int k = 0; k < rulesDecl.size(); k++) {
-                        JsonObject subRule = rulesDecl.getJsonObject(k);
-                        JsonArray conditions = subRule.getJsonArray("conditions");
-                        String constVal = subRule.getString("value");
+                  if (sub == subFieldCode.toCharArray()[0]) {
+                    if(rules != null){
+                      //there are rules associated with this subfield to instance field mapping
+                      for (int k = 0; k < rules.size(); k++) {
+                        //get the rules one by one
+                        JsonObject rule = rules.getJsonObject(k);
+                        //get the conditions associated with each rule
+                        JsonArray conditions = rule.getJsonArray("conditions");
+                        //get the constant value to set the instance field to in case all
+                        //conditions are met for a rule, since there can be multiple rules
+                        //each with multiple conditions, a match of all conditions in a single rule
+                        //will set the instance's field to the const value. hence, it is an AND
+                        //between all conditions and an OR between all rules
+                        String ruleConstVal = rule.getString("value");
                         boolean conditionsMet = true;
                         //each rule has conditions, if they are all met, then mark
                         //continue processing the next condition, if all conditions are met
                         //set the target to the value of the rule
+                        boolean isCustom = false;
                         for (int m = 0; m < conditions.size(); m++) {
                           JsonObject condition = conditions.getJsonObject(m);
+                          //1..n functions can be declared in a condition
+                          //the functions here can rely on the single value field for comparison
+                          //to the output of all functions on the marc's field data
+                          //or, if a custom function is declared, the value will contain
+                          //the javascript of the custom function
                           String []function = condition.getString("type").split(",");
-                          for (int l = 0; l < function.length; l++) {
-                            String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
-                            if(condition.getString("value") != null && !c.equals(condition.getString("value"))){
-                              conditionsMet = false;
+                          for (int n = 0; n < function.length; n++) {
+                            if("custom".equals(function[n].trim())){
+                              isCustom = true;
+                              break;
                             }
-                            else if (constVal == null){
-                              //if there is no val to use as a replacement , then assume the function
-                              //is doing the value update and set the data to the returned value
-                              data = c;
+                          }
+                          String valueParam = condition.getString("value");
+                          for (int l = 0; l < function.length; l++) {
+                            if("custom".equals(function[l].trim())){
+                              try{
+                                CompiledScript script = preCompiledJS.get(valueParam.hashCode());
+                                if(script == null){
+                                  script = ((Compilable) engine).compile(valueParam);
+                                  preCompiledJS.put(valueParam.hashCode(), script);
+                                }
+                                Bindings bindings = new SimpleBindings();
+                                bindings.put("DATA", data);
+                                data = (String)script.eval(bindings);
+                              }
+                              catch(Exception e){
+                                //the function has thrown an exception meaning this condition has failed,
+                                //hence this specific rule has failed
+                                conditionsMet = false;
+                                log.error(e);
+                              }
+                            }
+                            else{
+                              String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
+                              if(valueParam != null && !c.equals(valueParam) && !isCustom){
+                                //still allow a condition to compare the output of a function on the data to a constant value
+                                //unless this is a custom javascript function in which case, the value holds the custom function
+                                conditionsMet = false;
+                                break;
+                              }
+                              else if (ruleConstVal == null){
+                                //if there is no val to use as a replacement , then assume the function
+                                //is doing the value update and set the data to the returned value
+                                data = c;
+                              }
                             }
                           }
                         }
-
-                        if(!conditionsMet){
-                          continue;
+                        if(conditionsMet && ruleConstVal != null && !isCustom){
+                          //all conditions of the rule were met, and there
+                          //is a constant value associated with the rule, and this is
+                          //not a custom rule, then set the data to the const value
+                          //no need to continue processing other rules for this subfield
+                          data = ruleConstVal;
+                          break;
                         }
                       }
-
                     }
                     if (sb.length() > 0) {
                       sb.append(" ");
@@ -360,9 +422,9 @@ public class LoaderAPI implements LoadResource {
                   }
                 });
               }
-              String embeddedFields[] = subFieldRule.getString("target").split("\\.");
+              String embeddedFields[] = subFieldMapping.getString("target").split("\\.");
               if (!isMappingValid(object, embeddedFields)) {
-                log.debug("bad mapping " + subFieldRule.encode());
+                log.debug("bad mapping " + subFieldMapping.encode());
                 continue;
               }
               Object val = getValue(object, embeddedFields, sb.toString());
