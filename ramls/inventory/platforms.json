@@ -2,12 +2,12 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "creatorTypes": {
-      "id": "creatorType",
+    "platforms": {
+      "id": "platform",
       "type": "array",
       "items": {
         "type": "object",
-        "$ref": "creatortype.json"
+        "$ref": "platform.json"
       }
     },
     "totalRecords": {
@@ -15,7 +15,8 @@
     }
   },
   "required": [
-    "creatorTypes",
+    "platforms",
     "totalRecords"
   ]
 }
+

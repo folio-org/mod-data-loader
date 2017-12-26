@@ -1,16 +1,16 @@
 #%RAML 0.8
-title: Creator Types API
-version: v1.0
+title: Platforms API
+version: v2.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
 documentation:
-  - title: Creator Types API
-    content: This documents the API calls that can be made to query and manage creator types
+  - title: Platforms API
+    content: This documents the API calls that can be made to query and manage platforms for electronic resources
 
 schemas:
-  - creatortype.json: !include creatortype.json
-  - creatorTypes: !include creatortypes.json
+  - platform.json: !include platform.json
+  - platforms: !include platforms.json
   - errors: !include raml-util/schemas/errors.schema
   - error.schema: !include raml-util/schemas/error.schema
   - parameters.schema: !include raml-util/schemas/parameters.schema
@@ -27,25 +27,26 @@ resourceTypes:
   - collection-item: !include raml-util/rtypes/item-collection.raml
   - get-delete-only: !include raml-util/rtypes/get-delete.raml
 
-/creator-types:
+/platforms:
   type:
     collection:
-      exampleCollection: !include examples/creatortypes.json
-      exampleItem: !include examples/creatortype.json
-      schemaCollection: creatorTypes
-      schemaItem: creatortype.json
+      exampleCollection: !include examples/platforms.json
+      exampleItem: !include examples/platform.json
+      schemaCollection: platforms
+      schemaItem: platform.json
   get:
     is: [
       searchable: {description: "with valid searchable fields", example: "name=aaa"},
       pageable
     ]
-    description: Return a list of creator types
+    description: Return a list of platforms for electronic resources
   post:
-    description: Create a new creator type
+    description: Create a new platform
     is: [validate]
-  /{creatorTypeId}:
-    description: Pass in the creator type id
+  /{platformId}:
+    description: Pass in the platform id
     type:
       collection-item:
-        exampleItem: !include examples/creatortype.json
-        schema: creatortype.json
+        exampleItem: !include examples/platform.json
+        schema: platform.json
+
