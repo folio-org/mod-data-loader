@@ -265,6 +265,11 @@ public class LoaderAPI implements LoadResource {
               //the content of the control field
               String data = controlField.getData();
               data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+              if(data != null){
+                // replace our delmiter | with ' ' and escape " with \\"
+                //data = data.replace('|', ' ');// .replace("\\\\", "");
+                data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
+              }
               //if conditionsMet = true, then all conditions of a specific rule were met
               //and we can set the target to the rule's value
               String target = entryForControlField.getString("target");
@@ -284,9 +289,6 @@ public class LoaderAPI implements LoadResource {
           boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
           Object rememberComplexObj[] = new Object[] { null };
           DataField dataField = iter.next();
-          if(dataField.getTag().contains("20")){
-            System.out.println(dataField);
-          }
           JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
           if (mappingEntry != null) {
             //there is a mapping associated with this marc field
@@ -761,6 +763,9 @@ public class LoaderAPI implements LoadResource {
 
     for (int j = 0; j < len; j++) {
       char t = path.charAt(j);
+      if( t == '|'){
+        t = ' ';
+      }
       if (slash && isEven && t == '\\') {
         // we've seen \\ and now a third \ in a row
         isEven = false;
