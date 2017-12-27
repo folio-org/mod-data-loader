@@ -1,4 +1,31 @@
 {
+  "001": [
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [],
+          "value": "5d164f4b-0b15-4e42-ae75-cfcf85318ad9"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "008": [
     {
       "subfield": [],
@@ -71,7 +98,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace('  ' , ' ');"
+              "value": "DATA.replace(',' , ' ');"
             }
           ]
         },
@@ -114,7 +141,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace('  ' , ' ');"
+              "value": "DATA.replace(',' , ' ');"
             }
           ]
         }
@@ -125,7 +152,17 @@
         "b"
       ],
       "description": "",
-      "target": "alternativeTitles"
+      "target": "alternativeTitles",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        }
+      ]
     }
   ],
   "246": [
@@ -195,7 +232,17 @@
         "c"
       ],
       "description": "",
-      "target": "physicalDescriptions"
+      "target": "physicalDescriptions",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        }
+      ]
     }
   ],
   "500": [
@@ -204,7 +251,17 @@
         "a"
       ],
       "description": "",
-      "target": "notes"
+      "target": "notes",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        }
+      ]
     }
   ],
   "651": [
@@ -213,7 +270,17 @@
         "a"
       ],
       "description": "",
-      "target": "subjects"
+      "target": "subjects",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        }
+      ]
     }
   ],
   "690": [

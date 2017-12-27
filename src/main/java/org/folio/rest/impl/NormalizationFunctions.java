@@ -50,7 +50,7 @@ public class NormalizationFunctions {
   }
 
   private static String modified(final String input, int pos){
-    if(!Character.isAlphabetic(input.charAt(pos))){
+    if(!Character.isAlphabetic(input.charAt(pos)) && !Character.isDigit(input.charAt(pos))){
       return input.substring(0, input.length()-1);
     }
     return input;
