@@ -5,19 +5,34 @@
     "id": {
       "type": "string"
     },
-    "instanceId": {
-      "type": "string"
-    },
     "holdingsRecordId": {
       "type": "string"
     },
-    "title": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 255
-    },
     "barcode": {
       "type": "string"
+    },
+    "enumeration": {
+      "type": "string"
+    },
+    "chronology": {
+      "type": "string"
+    },
+    "pieceIdentifiers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "numberOfPieces": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     },
     "status": {
       "type": "object",
@@ -37,17 +52,14 @@
     "temporaryLoanTypeId": {
       "type": "string"
     },
-    "permanentLocationId": {
-      "type": "string"
-    },
     "temporaryLocationId": {
       "type": "string"
     }
   },
   "additionalProperties": false,
   "required": [
-    "title",
     "materialTypeId",
-    "permanentLoanTypeId"
+    "permanentLoanTypeId",
+    "holdingsRecordId"
   ]
 }
