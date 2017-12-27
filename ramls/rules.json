@@ -86,7 +86,6 @@
         "target": "identifiers.identifierTypeId",
         "description": "Type for Control Number (020)",
         "subfield": ["a"],
-        "objectPerSubField": true,
         "rules": [
             {
               "conditions": [],
@@ -98,7 +97,6 @@
           "target": "identifiers.value",
           "description": "Control Number (020)",
           "subfield": ["a"],
-          "standaloneObject": true,
           "rules": [
             {
               "conditions": [
@@ -115,7 +113,6 @@
       "target": "identifiers.identifierTypeId",
       "description": "Type for Control Number (020)",
       "subfield": ["c"],
-      "standaloneObject": true,
       "rules": [
         {
           "conditions": [],
@@ -127,7 +124,6 @@
       "target": "identifiers.value",
       "description": "Control Number (020)",
       "subfield": ["c"],
-      "standaloneObject": true,
       "rules": [
         {
           "conditions": [
