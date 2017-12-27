@@ -9,7 +9,7 @@ public class NormalizationFunctions {
   public static final String CHAR_SELECT = "char_select";
   public static final String REMOVE_ENDING_PUNC = "remove_ending_punc";
   public static final String TRIM = "trim";
-
+  public static final String TRIM_PERIOD = "trim_period";
 
   public static String runFunction(String funcName, String val, String param){
     if(CHAR_SELECT.equals(funcName)){
@@ -20,6 +20,9 @@ public class NormalizationFunctions {
     }
     else if(TRIM.equals(funcName)){
       return trim(val);
+    }
+    else if(TRIM_PERIOD.equals(funcName)){
+      return trimPeriod(val);
     }
     return "";
   }
@@ -39,6 +42,13 @@ public class NormalizationFunctions {
     catch(Exception e){
       return "";
     }
+  }
+
+  public static String trimPeriod(final String input){
+    if('.' == input.charAt(input.length()-1)){
+      return input.substring(0, input.length()-1);
+    }
+    return input;
   }
 
   public static String trim(String val){

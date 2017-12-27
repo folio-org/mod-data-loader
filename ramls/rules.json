@@ -146,7 +146,7 @@
         {
           "conditions": [
             {
-              "type": "remove_ending_punc"
+              "type": "trim_period"
             }
           ]
         },
