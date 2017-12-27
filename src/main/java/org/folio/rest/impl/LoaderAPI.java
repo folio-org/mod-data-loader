@@ -241,7 +241,7 @@ public class LoaderAPI implements LoadResource {
           leader[0] = record.getLeader();
         } catch (Exception e) {
           unprocessed.append("#").append(processedCount).append(" ");
-          log.error(e);
+          log.error(e.getMessage(), e);
           continue;
         }
         Iterator<ControlField> ctrlIter = cf.iterator();
@@ -379,7 +379,7 @@ public class LoaderAPI implements LoadResource {
     }
     catch(Exception e){
       block.fail(e);
-      log.error(e);
+      log.error(e.getMessage(), e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing record #" + processedCount +
           ". " + e.getMessage())));
@@ -390,7 +390,7 @@ public class LoaderAPI implements LoadResource {
         try {
           entity.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          log.error(e.getMessage(), e);
         }
       }
       if(client != null){
@@ -480,7 +480,7 @@ public class LoaderAPI implements LoadResource {
               //the function has thrown an exception meaning this condition has failed,
               //hence this specific rule has failed
               conditionsMet = false;
-              log.error(e);
+              log.error(e.getMessage(), e);
             }
             long endtJS = System.nanoTime();
             //jsPerfTime[0] = jsPerfTime[0]+(endtJS-startJS);
