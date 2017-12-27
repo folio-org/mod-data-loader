@@ -21,7 +21,7 @@ Some notes:
 
 It is best to attach Marc files with the same amount of records as the batch size - this is not mandatory (default batch size is 50,000 records and can be changed via the `batchSize` query parameter)
 
-MarcEdit can be used to split very large Marc records.
+[MarcEdit](http://marcedit.reeset.net/) can be used to split very large Marc records.
 
 You can call the `/load/marc-data` API multiple times on different Marc files - this should improve loading performance (the amount of concurrent calls depends on the amount of hardware on the server)
 
@@ -171,4 +171,5 @@ Currently, if the database is down, or the tenant in the x-okapi-tenant does not
 A single call to the API with a binary Marc file with 50,000 records should take approximately 40 seconds. You can run multiple API calls concurrently with different files to speed up loading. A 4-core server should support at least 4 concurrent calls (approximately 200,000 records within a minute).
 
 Adding Javascript custom functions (while allowing maximum normalization flexibility) does slow down processing. Each call takes approximately 0.2 milliseconds, meaning, for example, attaching custom Javascript functions to 6 fields in a 50,000 record Marc file means 300,000 javascript calls at 0.2 milliseconds per call -> 60,000 milliseconds (60 seconds) overhead.
+
 
