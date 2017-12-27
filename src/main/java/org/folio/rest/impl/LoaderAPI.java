@@ -264,7 +264,9 @@ public class LoaderAPI implements LoadResource {
               JsonArray rules = entryForControlField.getJsonArray("rules");
               //the content of the control field
               String data = controlField.getData();
-              data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+              if(rules != null){
+                data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+              }
               if(data != null){
                 // replace our delmiter | with ' ' and escape " with \\"
                 //data = data.replace('|', ' ');// .replace("\\\\", "");
@@ -468,7 +470,7 @@ public class LoaderAPI implements LoadResource {
             try{
               CompiledScript script = preCompiledJS.get(valueParam.hashCode());
               if(script == null){
-                System.out.println("compiling " + valueParam.hashCode());
+                log.debug("compiling JS function: " + valueParam);
                 script = ((Compilable) engine).compile(valueParam);
                 preCompiledJS.put(valueParam.hashCode(), script);
               }
