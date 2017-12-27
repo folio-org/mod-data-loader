@@ -107,6 +107,61 @@ Indicating multiple subfields will concat the values of each subfield into the t
   ]
 ```
 
+#### Grouping fields into an object
+
+Normally, all mappings in a single field that refer to the same object type will be mapped to a single object. For example, the below will map two subfields found in 001 to two different fields in the same identifier object within the instance.
+
+```
+  "001": [
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (001)",
+      ....
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (001)",
+  ...
+    }
+  ],
+```
+However, sometimes there is a need to create multiple objects (for example, multiple identifier objects) from subfields within a single field. 
+Consider the following Marc field:
+
+`020    ##$a0877790019$qblack leather$z0877780116 :$c$14.00`
+
+which should map to:
+```
+"identifiers": [
+  { "value": "0877790019", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"},
+  { "value": "0877780116", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"}
+]
+```
+
+To achieve this, you can wrap multiple subfield definitions into an `entity` field. In the below, both subfields will be mapped to the same object (which would happen normally), however, any additional entries outside of the `"entity"` definitions will be mapped to a new object, hence allowing you to create multiple objects from a single Marc field.
+```
+"020": [
+    {
+      "entity": [
+        {
+        "target": "identifiers.identifierTypeId",
+        "description": "Type for Control Number (020)",
+        "subfield": ["a"],
+        ...
+        },
+        {
+          "target": "identifiers.value",
+          "description": "Control Number (020)",
+          "subfield": ["b"],
+          ...
+        }
+      ]
+    },
+```    
+
+
+**Note**:
+
 Currently, if the database is down, or the tenant in the x-okapi-tenant does not exist, the API will return success but will do nothing. This is an issue in the RMB framework used by mod-inventory-storage (errors will be logged in the mod-inventory-storage log, but the message is not propagated at this time)
 
 
@@ -115,3 +170,4 @@ Currently, if the database is down, or the tenant in the x-okapi-tenant does not
 A single call to the API with a binary Marc file with 50,000 records should take approximately 40 seconds. You can run multiple API calls concurrently with different files to speed up loading. A 4-core server should support at least 4 concurrent calls (approximately 200,000 records within a minute).
 
 Adding Javascript custom functions (while allowing maximum normalization flexibility) does slow down processing. Each call takes approximately 0.2 milliseconds, meaning, for example, attaching custom Javascript functions to 6 fields in a 50,000 record Marc file means 300,000 javascript calls at 0.2 milliseconds per call -> 60,000 milliseconds (60 seconds) overhead.
+
