@@ -79,6 +79,66 @@
       ]
     }
   ],
+  "020": [
+    {
+      "entity": [
+        {
+        "target": "identifiers.identifierTypeId",
+        "description": "Type for Control Number (020)",
+        "subfield": ["a"],
+        "objectPerSubField": true,
+        "rules": [
+            {
+              "conditions": [],
+              "value": "8261054f-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "identifiers.value",
+          "description": "Control Number (020)",
+          "subfield": ["a"],
+          "standaloneObject": true,
+          "rules": [
+            {
+              "conditions": [
+                {
+                  "type": "trim"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (020)",
+      "subfield": ["c"],
+      "standaloneObject": true,
+      "rules": [
+        {
+          "conditions": [],
+          "value": "8261054f-be78-422d-bd51-4ed9f33c3499"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (020)",
+      "subfield": ["c"],
+      "standaloneObject": true,
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "100": [
     {
       "subfield": [

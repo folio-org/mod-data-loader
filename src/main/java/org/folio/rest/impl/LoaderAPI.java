@@ -209,6 +209,9 @@ public class LoaderAPI implements LoadResource {
 
     long start = System.currentTimeMillis();
 
+    long jsPerfTime[] = new long[]{0};
+    long jsPerfCount[] = new long[]{0};
+
     ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
     Map<Integer, CompiledScript> preCompiledJS = new HashMap<>();
 
@@ -230,12 +233,12 @@ public class LoaderAPI implements LoadResource {
         processedCount++;
         List<DataField> df = null;
         List<ControlField> cf = null;
-        Leader leader = null;
+        Leader leader[] = new Leader[]{null};
         try {
           Record record = reader.next();
           df = record.getDataFields();
           cf = record.getControlFields();
-          leader = record.getLeader();
+          leader[0] = record.getLeader();
         } catch (Exception e) {
           unprocessed.append("#").append(processedCount).append(" ");
           log.error(e);
@@ -249,58 +252,30 @@ public class LoaderAPI implements LoadResource {
           ControlField controlField = ctrlIter.next();
           //get entry for this control field in the rules.json file
           JsonArray entriesForControlField = rulesFile.getJsonArray(controlField.getTag());
+          //when populating an object with multiple fields from the same marc field
+          //this is used to pass the reference of the previously created object to the buildObject function
+          Object rememberComplexObj[] = new Object[] { null };
+          boolean createNewComplexObj = true;
           if (entriesForControlField != null) {
             for (int i = 0; i < entriesForControlField.size(); i++) {
               JsonObject entryForControlField = entriesForControlField.getJsonObject(i);
               //get rules - each rule can contain multiple conditions that need to be met and a
               //value to inject in case all the conditions are met
               JsonArray rules = entryForControlField.getJsonArray("rules");
-              Object rememberComplexObj[] = new Object[] { null };
-              boolean createNewComplexObj = true;
-              //iterate on each rule
-              for (int j = 0; j < rules.size(); j++) {
-                //the content of the control field
-                String data = controlField.getData();
-                //a single rule entry in the rules
-                JsonObject rule = rules.getJsonObject(j);
-                //the conditions in the rule
-                JsonArray conditions = rule.getJsonArray("conditions");
-                //the constant value to use if the conditions of this rule are met
-                String value = rule.getString("value");
-                boolean conditionsMet = true;
-                //each rule has conditions, if they are all met,
-                //set the target field in the instance to the constant value of the rule
-                for (int k = 0; k < conditions.size(); k++) {
-                  JsonObject condition = conditions.getJsonObject(k);
-                  String function = condition.getString("type");
-                  if(condition.getBoolean("LDR") != null){
-                    //the rule also has a condition on the leader field
-                    data = leader.toString();
-                  }
-                  String c = NormalizationFunctions.runFunction(function, data, condition.getString("parameter"));
-                  if(!c.equals(condition.getString("value"))){
-                    //the condition's value needs to equal the functions output (which receives
-                    //the marc field's data with the "parameter" field in the rules.json allowing
-                    //the function to receive parameters to specify what part of the marc's field data
-                    //to use for the comparison
-                    conditionsMet = false;
-                  }
-                }
-                if(!conditionsMet){
-                  continue;
-                }
-                //if conditionsMet = true, then all conditions of a specific rule were met
-                //and we can set the target to the rule's value
-                String target = entryForControlField.getString("target");
-                String embeddedFields[] = target.split("\\.");
-                if (!isMappingValid(object, embeddedFields)) {
-                  log.debug("bad mapping " + rule.encode());
-                  continue;
-                }
-                Object val = getValue(object, embeddedFields, value);
-                buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-                createNewComplexObj = false;
+              //the content of the control field
+              String data = controlField.getData();
+              data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+              //if conditionsMet = true, then all conditions of a specific rule were met
+              //and we can set the target to the rule's value
+              String target = entryForControlField.getString("target");
+              String embeddedFields[] = target.split("\\.");
+              if (!isMappingValid(object, embeddedFields)) {
+                log.debug("bad mapping " + rules.encode());
+                continue;
               }
+              Object val = getValue(object, embeddedFields, data);
+              buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+              createNewComplexObj = false;
             }
           }
         }
@@ -309,6 +284,9 @@ public class LoaderAPI implements LoadResource {
           boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
           Object rememberComplexObj[] = new Object[] { null };
           DataField dataField = iter.next();
+          if(dataField.getTag().contains("20")){
+            System.out.println(dataField);
+          }
           JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
           if (mappingEntry != null) {
             //there is a mapping associated with this marc field
@@ -318,119 +296,58 @@ public class LoaderAPI implements LoadResource {
               JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
               //a single mapping entry can also map multiple subfields to a specific field in
               //the instance
-              JsonArray subFields = subFieldMapping.getJsonArray("subfield");
-              //it can be a one to one mapping, or there could be rules to apply prior to the mapping
-              JsonArray rules = subFieldMapping.getJsonArray("rules");
-              StringBuffer sb = new StringBuffer();
-              //iterate over the subfields in the mapping entry
-              for (int j = 0; j < subFields.size(); j++) {
-                // get the field->subfield that is associated with the field->subfield rule
-                // in the rules.json file
-                String subFieldCode = subFields.getString(j);
-                dataField.getSubfields().forEach(subField -> {
-                  String data = subField.getData();
-                  char sub = subField.getCode();
-                  if (sub == subFieldCode.toCharArray()[0]) {
-                    if(rules != null){
-                      //there are rules associated with this subfield to instance field mapping
-                      for (int k = 0; k < rules.size(); k++) {
-                        //get the rules one by one
-                        JsonObject rule = rules.getJsonObject(k);
-                        //get the conditions associated with each rule
-                        JsonArray conditions = rule.getJsonArray("conditions");
-                        //get the constant value to set the instance field to in case all
-                        //conditions are met for a rule, since there can be multiple rules
-                        //each with multiple conditions, a match of all conditions in a single rule
-                        //will set the instance's field to the const value. hence, it is an AND
-                        //between all conditions and an OR between all rules
-                        String ruleConstVal = rule.getString("value");
-                        boolean conditionsMet = true;
-                        //each rule has conditions, if they are all met, then mark
-                        //continue processing the next condition, if all conditions are met
-                        //set the target to the value of the rule
-                        boolean isCustom = false;
-                        for (int m = 0; m < conditions.size(); m++) {
-                          JsonObject condition = conditions.getJsonObject(m);
-                          //1..n functions can be declared in a condition
-                          //the functions here can rely on the single value field for comparison
-                          //to the output of all functions on the marc's field data
-                          //or, if a custom function is declared, the value will contain
-                          //the javascript of the custom function
-                          String []function = condition.getString("type").split(",");
-                          for (int n = 0; n < function.length; n++) {
-                            if("custom".equals(function[n].trim())){
-                              isCustom = true;
-                              break;
-                            }
-                          }
-                          String valueParam = condition.getString("value");
-                          for (int l = 0; l < function.length; l++) {
-                            if("custom".equals(function[l].trim())){
-                              try{
-                                CompiledScript script = preCompiledJS.get(valueParam.hashCode());
-                                if(script == null){
-                                  script = ((Compilable) engine).compile(valueParam);
-                                  preCompiledJS.put(valueParam.hashCode(), script);
-                                }
-                                Bindings bindings = new SimpleBindings();
-                                bindings.put("DATA", data);
-                                data = (String)script.eval(bindings);
-                              }
-                              catch(Exception e){
-                                //the function has thrown an exception meaning this condition has failed,
-                                //hence this specific rule has failed
-                                conditionsMet = false;
-                                log.error(e);
-                              }
-                            }
-                            else{
-                              String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
-                              if(valueParam != null && !c.equals(valueParam) && !isCustom){
-                                //still allow a condition to compare the output of a function on the data to a constant value
-                                //unless this is a custom javascript function in which case, the value holds the custom function
-                                conditionsMet = false;
-                                break;
-                              }
-                              else if (ruleConstVal == null){
-                                //if there is no val to use as a replacement , then assume the function
-                                //is doing the value update and set the data to the returned value
-                                data = c;
-                              }
-                            }
-                          }
-                        }
-                        if(conditionsMet && ruleConstVal != null && !isCustom){
-                          //all conditions of the rule were met, and there
-                          //is a constant value associated with the rule, and this is
-                          //not a custom rule, then set the data to the const value
-                          //no need to continue processing other rules for this subfield
-                          data = ruleConstVal;
-                          break;
-                        }
+              JsonArray instanceField = subFieldMapping.getJsonArray("entity");
+              boolean entityRequested = false;
+              if(instanceField == null){
+                instanceField = new JsonArray();
+                instanceField.add(subFieldMapping);
+              }
+              else{
+                entityRequested = true;
+              }
+              for (int z = 0; z < instanceField.size(); z++) {
+                JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
+                //it can be a one to one mapping, or there could be rules to apply prior to the mapping
+                JsonArray rules = instanceField.getJsonObject(z).getJsonArray("rules");
+                StringBuffer sb = new StringBuffer();
+                //iterate over the subfields in the mapping entry
+                for (int j = 0; j < subFields.size(); j++) {
+                  // get the field->subfield that is associated with the field->subfield rule
+                  // in the rules.json file
+                  String subFieldCode = subFields.getString(j);
+                  dataField.getSubfields().forEach(subField -> {
+                    String data = subField.getData();
+                    char sub = subField.getCode();
+                    if (sub == subFieldCode.toCharArray()[0]) {
+                      if(rules != null){
+                        data = processRules(data, rules, preCompiledJS, engine, leader[0]);
                       }
+                      if (sb.length() > 0) {
+                        sb.append(" ");
+                      }
+                      // remove \ char if it is the last char of the text
+                      if (data.endsWith("\\")) {
+                        data = data.substring(0, data.length() - 1);
+                      }
+                      // replace our delmiter | with ' ' and escape " with \\"
+                      data = data.replace('|', ' ');// .replace("\\\\", "");
+                      sb.append(removeEscapedChars(data).replaceAll("\\\"", "\\\\\""));
                     }
-                    if (sb.length() > 0) {
-                      sb.append(" ");
-                    }
-                    // remove \ char if it is the last char of the text
-                    if (data.endsWith("\\")) {
-                      data = data.substring(0, data.length() - 1);
-                    }
-                    // replace our delmiter | with ' ' and escape " with \\"
-                    data = data.replace('|', ' ');// .replace("\\\\", "");
-                    sb.append(removeEscapedChars(data).replaceAll("\\\"", "\\\\\""));
-                  }
-                });
+                  });
+                }
+                String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
+                if (!isMappingValid(object, embeddedFields)) {
+                  log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
+                  continue;
+                }
+                Object val = getValue(object, embeddedFields, sb.toString());
+                buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+                createNewComplexObj = false;
+                ((Instance)object).setId(UUID.randomUUID().toString());
               }
-              String embeddedFields[] = subFieldMapping.getString("target").split("\\.");
-              if (!isMappingValid(object, embeddedFields)) {
-                log.debug("bad mapping " + subFieldMapping.encode());
-                continue;
+              if(entityRequested){
+                createNewComplexObj = true;
               }
-              Object val = getValue(object, embeddedFields, sb.toString());
-              buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-              createNewComplexObj = false;
-              ((Instance)object).setId(UUID.randomUUID().toString());
             }
           }
         }
@@ -490,7 +407,111 @@ public class LoaderAPI implements LoadResource {
         return;
       }
     });
+  }
 
+  private boolean createNewObject(JsonObject obj){
+    if(obj.containsKey("standaloneObject")){
+      if(obj.getBoolean("standaloneObject")){
+        return true;
+      }
+      else{
+        return false;
+      }
+    }
+    else{
+      return false;
+    }
+  }
+
+  private String processRules(String data, JsonArray rules, Map<Integer, CompiledScript> preCompiledJS, ScriptEngine engine, Leader leader){
+    //there are rules associated with this subfield to instance field mapping
+    for (int k = 0; k < rules.size(); k++) {
+      //get the rules one by one
+      JsonObject rule = rules.getJsonObject(k);
+      //get the conditions associated with each rule
+      JsonArray conditions = rule.getJsonArray("conditions");
+      //get the constant value to set the instance field to in case all
+      //conditions are met for a rule, since there can be multiple rules
+      //each with multiple conditions, a match of all conditions in a single rule
+      //will set the instance's field to the const value. hence, it is an AND
+      //between all conditions and an OR between all rules
+      String ruleConstVal = rule.getString("value");
+      boolean conditionsMet = true;
+      //each rule has conditions, if they are all met, then mark
+      //continue processing the next condition, if all conditions are met
+      //set the target to the value of the rule
+      boolean isCustom = false;
+      for (int m = 0; m < conditions.size(); m++) {
+        JsonObject condition = conditions.getJsonObject(m);
+        //1..n functions can be declared in a condition
+        //the functions here can rely on the single value field for comparison
+        //to the output of all functions on the marc's field data
+        //or, if a custom function is declared, the value will contain
+        //the javascript of the custom function
+        String []function = condition.getString("type").split(",");
+        for (int n = 0; n < function.length; n++) {
+          if("custom".equals(function[n].trim())){
+            isCustom = true;
+            break;
+          }
+        }
+        if(condition.getBoolean("LDR") != null && leader != null){
+          //the rule also has a condition on the leader field
+          data = leader.toString();
+        }
+        String valueParam = condition.getString("value");
+        for (int l = 0; l < function.length; l++) {
+          if("custom".equals(function[l].trim())){
+            long startJS = System.nanoTime();
+            try{
+              CompiledScript script = preCompiledJS.get(valueParam.hashCode());
+              if(script == null){
+                System.out.println("compiling " + valueParam.hashCode());
+                script = ((Compilable) engine).compile(valueParam);
+                preCompiledJS.put(valueParam.hashCode(), script);
+              }
+              Bindings bindings = new SimpleBindings();
+              bindings.put("DATA", data);
+              data = (String)script.eval(bindings);
+            }
+            catch(Exception e){
+              //the function has thrown an exception meaning this condition has failed,
+              //hence this specific rule has failed
+              conditionsMet = false;
+              log.error(e);
+            }
+            long endtJS = System.nanoTime();
+            //jsPerfTime[0] = jsPerfTime[0]+(endtJS-startJS);
+            //jsPerfCount[0]++;
+          }
+          else{
+            String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
+            if(valueParam != null && !c.equals(valueParam) && !isCustom){
+              //still allow a condition to compare the output of a function on the data to a constant value
+              //unless this is a custom javascript function in which case, the value holds the custom function
+              conditionsMet = false;
+              break;
+            }
+            else if (ruleConstVal == null){
+              //if there is no val to use as a replacement , then assume the function
+              //is doing the value update and set the data to the returned value
+              data = c;
+            }
+          }
+        }
+        if(!conditionsMet){
+          break;
+        }
+      }
+      if(conditionsMet && ruleConstVal != null && !isCustom){
+        //all conditions of the rule were met, and there
+        //is a constant value associated with the rule, and this is
+        //not a custom rule, then set the data to the const value
+        //no need to continue processing other rules for this subfield
+        data = ruleConstVal;
+      }
+    }
+    return data;
   }
 
   private String managePushToDB(boolean isTest, StringBuffer importSQLStatement, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
