@@ -271,6 +271,9 @@ public class LoaderAPI implements LoadResource {
                 // replace our delmiter | with ' ' and escape " with \\"
                 //data = data.replace('|', ' ');// .replace("\\\\", "");
                 data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
+                if(data.length() == 0){
+                  continue;
+                }
               }
               //if conditionsMet = true, then all conditions of a specific rule were met
               //and we can set the target to the rule's value
@@ -342,6 +345,9 @@ public class LoaderAPI implements LoadResource {
                 String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
                 if (!isMappingValid(object, embeddedFields)) {
                   log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
+                  continue;
+                }
+                if(sb.length() == 0){
                   continue;
                 }
                 Object val = getValue(object, embeddedFields, sb.toString());
