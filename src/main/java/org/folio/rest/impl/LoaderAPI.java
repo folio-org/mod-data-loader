@@ -316,6 +316,8 @@ public class LoaderAPI implements LoadResource {
                 JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
                 //it can be a one to one mapping, or there could be rules to apply prior to the mapping
                 JsonArray rules = instanceField.getJsonObject(z).getJsonArray("rules");
+                String delimiter = instanceField.getJsonObject(z).getString("subFieldDelimiter");
+
                 StringBuffer sb = new StringBuffer();
                 //iterate over the subfields in the mapping entry
                 for (int j = 0; j < subFields.size(); j++) {
@@ -330,7 +332,11 @@ public class LoaderAPI implements LoadResource {
                         data = processRules(data, rules, preCompiledJS, engine, leader[0]);
                       }
                       if (sb.length() > 0) {
-                        sb.append(" ");
+                        if(delimiter != null){
+                          sb.append(delimiter);
+                        }else{
+                          sb.append(" ");
+                        }
                       }
                       // remove \ char if it is the last char of the text
                       if (data.endsWith("\\")) {

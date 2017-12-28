@@ -320,6 +320,31 @@
       ]
     }
   ],
+  "600": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "subjects"
+    },
+        {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "subjects"
+    }
+    ,
+    {
+      "subfield": [
+        "d","v", "x", "y", "z"
+      ],
+      "description": "",
+      "subFieldDelimiter": "--",
+      "target": "subjects"
+    }
+  ],
   "651": [
     {
       "subfield": [
