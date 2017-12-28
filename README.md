@@ -27,7 +27,7 @@ You can call the `/load/marc-data` API multiple times on different Marc files - 
 
 A records position in the uploaded file will be present in the `X-Unprocessed` header for each Marc record that was not parsed correctly.
 
-Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rule may be declared.
+Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rule may be declared. The `LDR` field indicates that the condition should be tested against the Marc's Leader field data. 
 
 ```json
  "rules": [
