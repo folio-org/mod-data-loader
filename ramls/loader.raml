@@ -60,7 +60,7 @@ schemas:
     post:
       is: [secured]
       description: |
-          Uploads a file and saves it to tenants instance table
+          Uploads a file and saves it to the specified tenant's instance table
       queryParameters:
         storageURL:
           displayName: StorageURL
@@ -81,7 +81,7 @@ schemas:
           description: "Saved"
           headers:
             X-Unprocessed:
-              description: line # of unprocessed records
+              description: line number of unprocessed (failed) records within attached file
         400:
           description: "Bad request"
           body:
