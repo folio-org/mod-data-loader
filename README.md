@@ -1,9 +1,17 @@
 # test-data-loader
+
+Copyright (C) 2017 The Open Library Foundation
+
+This software is distributed under the terms of the Apache License,
+Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
+
+## Introduction
+
 RMB based module used to load test data
 
 RMB based data loader. Currently supports loading binary Marc records into the mod-inventory-storage instance table.
 
-### APIs
+## APIs
 Exposes four APIs
 1. POST `/load/marc-rules` - uploads a [rules json](https://github.com/folio-org/test-data-loader/blob/master/ramls/rules.json) file to use when mapping marc fields to instance fields. The rules file is only stored in memory and will be associated with the tenant passed in the x-okapi-tenant header
 2.  GET `/load/marc-rules`
