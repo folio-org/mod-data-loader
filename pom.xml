@@ -10,7 +10,7 @@
       <url>http://spdx.org/licenses/Apache-2.0</url>
     </license>
   </licenses>
-  
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -190,5 +190,5 @@
 
     </plugins>
   </build>
-  
+
 </project>
