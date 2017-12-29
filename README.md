@@ -1,9 +1,17 @@
 # test-data-loader
+
+Copyright (C) 2017 The Open Library Foundation
+
+This software is distributed under the terms of the Apache License,
+Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
+
+## Introduction
+
 RMB based module used to load test data
 
 RMB based data loader. Currently supports loading binary Marc records into the mod-inventory-storage instance table.
 
-### APIs 
+## APIs
 Exposes four APIs
 1. POST `/load/marc-rules` - uploads a [rules json](https://github.com/folio-org/test-data-loader/blob/master/ramls/rules.json) file to use when mapping marc fields to instance fields. The rules file is only stored in memory and will be associated with the tenant passed in the x-okapi-tenant header
 2.  GET `/load/marc-rules`
@@ -27,7 +35,7 @@ You can call the `/load/marc-data` API multiple times on different Marc files - 
 
 A records position in the uploaded file will be present in the `X-Unprocessed` header for each Marc record that was not parsed correctly.
 
-Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rule may be declared. The `LDR` field indicates that the condition should be tested against the Marc's Leader field data. 
+Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rule may be declared. The `LDR` field indicates that the condition should be tested against the Marc's Leader field data.
 
 ```json
  "rules": [
@@ -126,7 +134,7 @@ Normally, all mappings in a single field that refer to the same object type will
     }
   ],
 ```
-However, sometimes there is a need to create multiple objects (for example, multiple identifier objects) from subfields within a single field. 
+However, sometimes there is a need to create multiple objects (for example, multiple identifier objects) from subfields within a single field.
 Consider the following Marc field:
 
 `020    ##$a0877790019$qblack leather$z0877780116 :$c$14.00`
@@ -158,7 +166,7 @@ To achieve this, you can wrap multiple subfield definitions into an `entity` fie
         }
       ]
     },
-```    
+```
 
 
 **Note**:
