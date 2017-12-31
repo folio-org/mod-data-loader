@@ -1,140 +1,4 @@
 {
-  "001": [
-    {
-      "target": "identifiers.identifierTypeId",
-      "description": "Type for Control Number (001)",
-      "subfield": [],
-      "rules": [
-        {
-          "conditions": [],
-          "value": "5d164f4b-0b15-4e42-ae75-cfcf85318ad9"
-        }
-      ]
-    },
-    {
-      "target": "identifiers.value",
-      "description": "Control Number (001)",
-      "subfield": [],
-      "rules": [
-        {
-          "conditions": [
-            {
-              "type": "trim"
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "008": [
-    {
-      "subfield": [],
-      "description": "",
-      "target": "instanceTypeId",
-      "rules": [
-        {
-          "conditions": [
-            {
-              "type": "char_select",
-              "parameter": "0",
-              "value": "7"
-            },
-            {
-              "type": "char_select",
-              "parameter": "1",
-              "value": "8"
-            },
-            {
-              "type": "char_select",
-              "parameter": "0",
-              "value": "0",
-              "LDR": true
-            }
-          ],
-          "value": "book"
-        },
-        {
-          "conditions": [
-            {
-              "type": "char_select",
-              "parameter": "1-2",
-              "value": "78"
-            },
-            {
-              "type": "char_select",
-              "parameter": "0",
-              "value": "0",
-              "LDR": true
-            }
-          ],
-          "value": "Books."
-        },
-        {
-          "conditions": [
-            {
-              "type": "remove_ending_punc"
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "020": [
-    {
-      "entity": [
-        {
-        "target": "identifiers.identifierTypeId",
-        "description": "Type for Control Number (020)",
-        "subfield": ["a"],
-        "rules": [
-            {
-              "conditions": [],
-              "value": "8261054f-be78-422d-bd51-4ed9f33c3422"
-            }
-          ]
-        },
-        {
-          "target": "identifiers.value",
-          "description": "Control Number (020)",
-          "subfield": ["a"],
-          "rules": [
-            {
-              "conditions": [
-                {
-                  "type": "trim"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "target": "identifiers.identifierTypeId",
-      "description": "Type for Control Number (020)",
-      "subfield": ["c"],
-      "rules": [
-        {
-          "conditions": [],
-          "value": "8261054f-be78-422d-bd51-4ed9f33c3499"
-        }
-      ]
-    },
-    {
-      "target": "identifiers.value",
-      "description": "Control Number (020)",
-      "subfield": ["c"],
-      "rules": [
-        {
-          "conditions": [
-            {
-              "type": "trim"
-            }
-          ]
-        }
-      ]
-    }
-  ],
   "100": [
     {
       "subfield": [
@@ -323,25 +187,40 @@
   "600": [
     {
       "subfield": [
-        "a"
+        "a",
+        "b",
+        "c",
+        "d",
+        "v",
+        "x",
+        "y",
+        "z"
       ],
       "description": "",
-      "target": "subjects"
-    },
+      "subFieldDelimiter": [
         {
-      "subfield": [
-        "b"
+          "value": "--",
+          "subfields": [
+            "d",
+            "v",
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "value": " ",
+          "subfields": [
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "value": "&&&",
+          "subfields": []
+        }
       ],
-      "description": "",
-      "target": "subjects"
-    }
-    ,
-    {
-      "subfield": [
-        "d","v", "x", "y", "z"
-      ],
-      "description": "",
-      "subFieldDelimiter": "--",
       "target": "subjects"
     }
   ],
@@ -407,6 +286,150 @@
       ],
       "description": "",
       "target": "source"
+    }
+  ],
+  "001": [
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [],
+          "value": "5d164f4b-0b15-4e42-ae75-cfcf85318ad9"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "008": [
+    {
+      "subfield": [],
+      "description": "",
+      "target": "instanceTypeId",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "7"
+            },
+            {
+              "type": "char_select",
+              "parameter": "1",
+              "value": "8"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "book"
+        },
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "1-2",
+              "value": "78"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "Books."
+        },
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "020": [
+    {
+      "entity": [
+        {
+          "target": "identifiers.identifierTypeId",
+          "description": "Type for Control Number (020)",
+          "subfield": [
+            "a"
+          ],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "8261054f-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "identifiers.value",
+          "description": "Control Number (020)",
+          "subfield": [
+            "a"
+          ],
+          "rules": [
+            {
+              "conditions": [
+                {
+                  "type": "trim"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (020)",
+      "subfield": [
+        "c"
+      ],
+      "rules": [
+        {
+          "conditions": [],
+          "value": "8261054f-be78-422d-bd51-4ed9f33c3499"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (020)",
+      "subfield": [
+        "c"
+      ],
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
     }
   ],
   "035": [

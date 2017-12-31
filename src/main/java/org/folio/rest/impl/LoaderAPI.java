@@ -46,6 +46,7 @@ import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.Leader;
 import org.marc4j.marc.Record;
+import org.marc4j.marc.Subfield;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -316,27 +317,64 @@ public class LoaderAPI implements LoadResource {
                 JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
                 //it can be a one to one mapping, or there could be rules to apply prior to the mapping
                 JsonArray rules = instanceField.getJsonObject(z).getJsonArray("rules");
-                String delimiter = instanceField.getJsonObject(z).getString("subFieldDelimiter");
-
-                StringBuffer sb = new StringBuffer();
+                //allow to declare a delimiter when concatenating subfields.
+                //also allow , in a multi subfield field, to have some subfields with delimiter x and
+                //some with delimiter y, and include a separator to separate each set of subfields
+                //maintain a delimiter per subfield map - to lookup the correct delimiter and place it in string
+                //maintain a string buffer per subfield - but with the string buffer being a reference to the
+                //same stringbuffer for subfields with the same delimiter - the stringbuffer references are
+                //maintained in the buffers2concat list which is then iterated over and we place a separator
+                //between the content of each string buffer reference's content
+                JsonArray delimiters = instanceField.getJsonObject(z).getJsonArray("subFieldDelimiter");
+                final Map<String, String> subField2Delimiter = new HashMap<>();
+                final Map<String, StringBuffer> subField2Data = new HashMap<>();
+                final List<StringBuffer> buffers2concat = new ArrayList<>();
+                final StringBuffer sb1 = new StringBuffer();
+                String separator[] = new String[]{ null };
+                if(delimiters != null){
+                  for (int j = 0; j < delimiters.size(); j++) {
+                    JsonObject job = delimiters.getJsonObject(j);
+                    String delimiter = job.getString("value");
+                    JsonArray subFieldswithDel = job.getJsonArray("subfields");
+                    StringBuffer subFieldsStringBuffer = new StringBuffer();
+                    buffers2concat.add(subFieldsStringBuffer);
+                    if(subFieldswithDel.size() == 0){
+                      separator[0] = delimiter;
+                    }
+                    for (int k = 0; k < subFieldswithDel.size(); k++) {
+                      String sf = subFieldswithDel.getString(k);
+                      subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
+                      subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuffer);
+                    }
+                  }
+                }
                 //iterate over the subfields in the mapping entry
                 for (int j = 0; j < subFields.size(); j++) {
                   // get the field->subfield that is associated with the field->subfield rule
                   // in the rules.json file
                   String subFieldCode = subFields.getString(j);
-                  dataField.getSubfields().forEach(subField -> {
-                    String data = subField.getData();
-                    char sub = subField.getCode();
+                  //we need to track associated delimiter with this subfield
+                  //since if we need to switch delimiters it means we've moved
+                  //to a different set of delimited subfields and then we need
+                  //the seaprator
+                  String del[] = new String[]{ null };
+                  List<Subfield> subs = dataField.getSubfields();
+                  int size = subs.size();
+                  for (int k = 0; k < size; k++) {
+                    String data = subs.get(k).getData();
+                    char sub = subs.get(k).getCode();
                     if (sub == subFieldCode.toCharArray()[0]) {
+                      String delim = String.valueOf(sub);
                       if(rules != null){
                         data = processRules(data, rules, preCompiledJS, engine, leader[0]);
                       }
-                      if (sb.length() > 0) {
-                        if(delimiter != null){
-                          sb.append(delimiter);
-                        }else{
-                          sb.append(" ");
+                      if(delimiters != null){
+                        if (subField2Data.get(String.valueOf(delim)).length() > 0) {
+                          subField2Data.get(String.valueOf(delim)).append(subField2Delimiter.get(delim));
                         }
+                      }
+                      else if(sb1.length() > 0){
+                        sb1.append(" ");
                       }
                       // remove \ char if it is the last char of the text
                       if (data.endsWith("\\")) {
@@ -344,19 +382,41 @@ public class LoaderAPI implements LoadResource {
                       }
                       // replace our delmiter | with ' ' and escape " with \\"
                       data = data.replace('|', ' ');// .replace("\\\\", "");
-                      sb.append(removeEscapedChars(data).replaceAll("\\\"", "\\\\\""));
+                      data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
+                      if(delimiters != null){
+                        subField2Data.get(String.valueOf(sub)).append(data);
+                      }
+                      else{
+                        sb1.append(data);
+                      }
                     }
-                  });
+                  }
                 }
                 String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
                 if (!isMappingValid(object, embeddedFields)) {
                   log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
                   continue;
                 }
-                if(sb.length() == 0){
+                StringBuffer finalData = new StringBuffer();
+                if(delimiters != null){
+                  int size = buffers2concat.size();
+                  for(int x=0; x<size; x++){
+                    StringBuffer sb = buffers2concat.get(x);
+                    if(sb.length() > 0){
+                      if(finalData.length() > 0){
+                        finalData.append(separator[0]);
+                      }
+                      finalData.append(sb);
+                    }
+                  }
+                }
+                else{
+                  finalData = sb1;
+                }
+                if(finalData.length() == 0){
                   continue;
                 }
-                Object val = getValue(object, embeddedFields, sb.toString());
+                Object val = getValue(object, embeddedFields, finalData.toString());
                 buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
                 createNewComplexObj = false;
                 ((Instance)object).setId(UUID.randomUUID().toString());
@@ -441,6 +501,7 @@ public class LoaderAPI implements LoadResource {
 
   private String processRules(String data, JsonArray rules, Map<Integer, CompiledScript> preCompiledJS, ScriptEngine engine, Leader leader){
     //there are rules associated with this subfield to instance field mapping
+    String originalData = data;
     for (int k = 0; k < rules.size(); k++) {
       //get the rules one by one
       JsonObject rule = rules.getJsonObject(k);
@@ -516,6 +577,8 @@ public class LoaderAPI implements LoadResource {
           }
         }
         if(!conditionsMet){
+          //all conditions for this rule we not met, revert data to the originalData passed in.
+          data = originalData;
           break;
         }
       }
@@ -525,6 +588,7 @@ public class LoaderAPI implements LoadResource {
         //not a custom rule, then set the data to the const value
         //no need to continue processing other rules for this subfield
         data = ruleConstVal;
+        break;
       }
     }
     return data;
