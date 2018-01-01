@@ -216,9 +216,38 @@ The `entity` example will concatenate together values from repeated fields. For 
 
 ```
 
+#### Delimiting subfields
 
+As previously mentioned, grouping subfields  `"subfield": [ "a", "y", "5" ]` will concatenate (space delimited) the values in those subfields and place the result in the target. However, if there is a need to declare different delimiters per set of subfields, the following can be declared using the `"subFieldDelimiter"` array:
 
-
+```
+  "600": [
+    {
+      "subfield": [
+        "a","b","c","d","v","x","y","z"
+      ],
+      "description": "",
+      "subFieldDelimiter": [
+        {
+          "value": "--",
+          "subfields": [
+            "d","v","x","y","z"
+          ]
+        },
+        {
+          "value": " ",
+          "subfields": ["a", "b", "c"]
+        },
+        {
+          "value": "&&&",
+          "subfields": []
+        }
+      ],
+      "target": "subjects"
+    }
+  ]
+```
+an empty subfields array indicates that this will be used to separate values from different subfield sets (subfields associated with a specific separator).
 
 
 **Note**:
@@ -231,5 +260,3 @@ Currently, if the database is down, or the tenant in the x-okapi-tenant does not
 A single call to the API with a binary Marc file with 50,000 records should take approximately 40 seconds. You can run multiple API calls concurrently with different files to speed up loading. A 4-core server should support at least 4 concurrent calls (approximately 200,000 records within a minute).
 
 Adding Javascript custom functions (while allowing maximum normalization flexibility) does slow down processing. Each call takes approximately 0.2 milliseconds, meaning, for example, attaching custom Javascript functions to 6 fields in a 50,000 record Marc file means 300,000 javascript calls at 0.2 milliseconds per call -> 60,000 milliseconds (60 seconds) overhead.
-
-
