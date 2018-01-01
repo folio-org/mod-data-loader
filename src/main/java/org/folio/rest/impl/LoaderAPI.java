@@ -8,9 +8,11 @@ import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -332,6 +334,7 @@ public class LoaderAPI implements LoadResource {
               List<Object[]> obj = new ArrayList<>();
               for (int z = 0; z < instanceField.size(); z++) {
                 JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
+                Set<String> subFieldsSet = new HashSet<String>(subFields.getList());
                 //it can be a one to one mapping, or there could be rules to apply prior to the mapping
                 JsonArray rules = instanceField.getJsonObject(z).getJsonArray("rules");
                 //allow to declare a delimiter when concatenating subfields.
@@ -378,61 +381,55 @@ public class LoaderAPI implements LoadResource {
                   log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
                   continue;
                 }
-                //TODO PUSH subFields into a map and look them up per subfield in the dataField
                 //iterate over the subfields in the mapping entry
-                for (int j = 0; j < subFields.size(); j++) {
-                  // get the field->subfield that is associated with the field->subfield rule
-                  // in the rules.json file
-                  String subFieldCode = subFields.getString(j);
-                  //we need to track associated delimiter with this subfield
-                  //since if we need to switch delimiters it means we've moved
-                  //to a different set of delimited subfields and then we need
-                  //the seaprator
-                  String del[] = new String[]{ null };
-                  List<Subfield> subs = dataField.getSubfields();
-                  int size = subs.size();
-                  for (int k = 0; k < size; k++) {
-                    String data = subs.get(k).getData();
-                    char sub = subs.get(k).getCode();
-                    if (sub == subFieldCode.toCharArray()[0]) {
-                      if(obj.size() <= k){
-                        for (int l = 0; l <= k; l++) {
-                          obj.add(new Object[] { null });
-                        }
+                List<Subfield> subs = dataField.getSubfields();
+                int size = subs.size();
+                for (int k = 0; k < size; k++) {
+                  String data = subs.get(k).getData();
+                  char sub1 = subs.get(k).getCode();
+                  String subfield = String.valueOf(sub1);
+                  if (subFieldsSet.contains(subfield)) {
+                    //rule file contains a rule for this subfield
+                    if(obj.size() <= k){
+                      //temporarily save objects with multiple fields so that the fields of the
+                      //same object can be populated with data from different subfields
+                      for (int l = 0; l <= k; l++) {
+                        obj.add(new Object[] { null });
                       }
-                      String delim = String.valueOf(sub);
-                      if(rules != null){
-                        data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+                    }
+                    if(rules != null){
+                      data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+                    }
+                    if(delimiters != null){
+                      //delimiters is not null, meaning we have a string buffer for each set of subfields
+                      //so populate the appropriate string buffer
+                      if (subField2Data.get(String.valueOf(subfield)).length() > 0) {
+                        subField2Data.get(String.valueOf(subfield)).append(subField2Delimiter.get(subfield));
                       }
-                      if(delimiters != null){
-                        if (subField2Data.get(String.valueOf(delim)).length() > 0) {
-                          subField2Data.get(String.valueOf(delim)).append(subField2Delimiter.get(delim));
-                        }
+                    }
+                    // remove \ char if it is the last char of the text
+                    if (data.endsWith("\\")) {
+                      data = data.substring(0, data.length() - 1);
+                    }
+                    data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
+                    if(delimiters != null){
+                      subField2Data.get(subfield).append(data);
+                    }
+                    else{
+                      StringBuffer sb = buffers2concat.get(0);
+                      if(sb.length() > 0){
+                        sb.append(" ");
                       }
-                      // remove \ char if it is the last char of the text
-                      if (data.endsWith("\\")) {
-                        data = data.substring(0, data.length() - 1);
-                      }
-                      data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
-                      if(delimiters != null){
-                        subField2Data.get(String.valueOf(sub)).append(data);
+                      sb.append(data);
+                    }
+                    if(entityRequestedPerRepeatedSubfield && entityRequested){
+                      if(obj.get(k)[0] != null){
+                        createNewComplexObj = false;
                       }
                       else{
-                        StringBuffer sb = buffers2concat.get(0);
-                        if(sb.length() > 0){
-                          sb.append(" ");
-                        }
-                        sb.append(data);
+                        createNewComplexObj = true;
                       }
-                      if(entityRequestedPerRepeatedSubfield && entityRequested){
-                        if(obj.get(k)[0] != null){
-                          createNewComplexObj = false;
-                        }
-                        else{
-                          createNewComplexObj = true;
-                        }
-                        createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, obj.get(k));
-                      }
+                      createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, obj.get(k));
                     }
                   }
                 }
