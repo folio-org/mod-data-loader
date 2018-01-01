@@ -168,6 +168,58 @@ To achieve this, you can wrap multiple subfield definitions into an `entity` fie
     },
 ```
 
+##### Handling repeating fields
+
+The `entity` example will concatenate together values from repeated fields. For example, an `entity` on subfield  "a" will concatenate all values in all the "a" subfields (if they repeat) - and map the concatenated value to the declared field. If there is a need to have each "a" subfield generate its own object within the instance (for example, each "a" subfield should create a separate classification entry and should not be concatenated within a single entry). The following field can be added to the configuration: `"entityPerRepeatedSubfield": true`
+
+```
+ "050": [
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["a"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": ["a"]
+        }
+      ]
+    },
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["b"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3423"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": ["b"]
+        }
+      ]
+    }
+  ],
+
+```
+
+
+
+
+
 
 **Note**:
 
