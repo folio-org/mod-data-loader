@@ -432,6 +432,50 @@
       ]
     }
   ],
+ "050": [
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["a"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": [
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["b"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3423"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": [
+            "b"
+          ]
+        }
+      ]
+    }
+  ],
   "035": [
     {
       "subfield": [

@@ -269,8 +269,6 @@ public class LoaderAPI implements LoadResource {
                 data = processRules(data, rules, preCompiledJS, engine, leader[0]);
               }
               if(data != null){
-                // replace our delmiter | with ' ' and escape " with \\"
-                //data = data.replace('|', ' ');// .replace("\\\\", "");
                 data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
                 if(data.length() == 0){
                   continue;
@@ -305,7 +303,25 @@ public class LoaderAPI implements LoadResource {
               //a single mapping entry can also map multiple subfields to a specific field in
               //the instance
               JsonArray instanceField = subFieldMapping.getJsonArray("entity");
+              //entity field indicates that the subfields within the entity definition should be
+              //a single object, anything outside the entity definition will be placed in another
+              //object of the same type, unless the target points to a different type.
+              //multiple entities can be declared in a field, meaning each entity will be a new object
+              //with the subfields defined in a single entity grouped as a single object.
+              //all definitions not enclosed within the entity will be associated with anothe single object
               boolean entityRequested = false;
+              //for repeatable subfields, you can indicate that each repeated subfield should respect
+              //the new object declaration and create a new object. so that if there are two "a" subfields
+              //each one will create its own object
+              Boolean entityRequestedPerRepeatedSubfield = subFieldMapping.getBoolean("entityPerRepeatedSubfield");
+              if(entityRequestedPerRepeatedSubfield == null){
+                entityRequestedPerRepeatedSubfield = false;
+              }
+              else{
+                entityRequestedPerRepeatedSubfield = true;
+              }
+              //if no "entity" is defined , then the contents of the field getting mapped to the same type
+              //will be placed in a single object of that type.
               if(instanceField == null){
                 instanceField = new JsonArray();
                 instanceField.add(subFieldMapping);
@@ -313,6 +329,7 @@ public class LoaderAPI implements LoadResource {
               else{
                 entityRequested = true;
               }
+              List<Object[]> obj = new ArrayList<>();
               for (int z = 0; z < instanceField.size(); z++) {
                 JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
                 //it can be a one to one mapping, or there could be rules to apply prior to the mapping
@@ -326,10 +343,16 @@ public class LoaderAPI implements LoadResource {
                 //maintained in the buffers2concat list which is then iterated over and we place a separator
                 //between the content of each string buffer reference's content
                 JsonArray delimiters = instanceField.getJsonObject(z).getJsonArray("subFieldDelimiter");
+                //this is a map of each subfield to the delimiter to delimit it with
                 final Map<String, String> subField2Delimiter = new HashMap<>();
+                //map a subfield to a stringbuffer which will hold its content
+                //since subfields can be concatenated into the same stringbuffer
+                //the map of different subfields can map to the same stringbuffer reference
                 final Map<String, StringBuffer> subField2Data = new HashMap<>();
+                //keeps a reference to the stringbuffers that contain the data of the
+                //subfield sets. this list is then iterated over and used to delimit subfield sets
                 final List<StringBuffer> buffers2concat = new ArrayList<>();
-                final StringBuffer sb1 = new StringBuffer();
+                //separator between subfields with different delimiters
                 String separator[] = new String[]{ null };
                 if(delimiters != null){
                   for (int j = 0; j < delimiters.size(); j++) {
@@ -342,12 +365,20 @@ public class LoaderAPI implements LoadResource {
                       separator[0] = delimiter;
                     }
                     for (int k = 0; k < subFieldswithDel.size(); k++) {
-                      String sf = subFieldswithDel.getString(k);
                       subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
                       subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuffer);
                     }
                   }
                 }
+                else{
+                  buffers2concat.add(new StringBuffer());
+                }
+                String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
+                if (!isMappingValid(object, embeddedFields)) {
+                  log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
+                  continue;
+                }
+                //TODO PUSH subFields into a map and look them up per subfield in the dataField
                 //iterate over the subfields in the mapping entry
                 for (int j = 0; j < subFields.size(); j++) {
                   // get the field->subfield that is associated with the field->subfield rule
@@ -364,6 +395,11 @@ public class LoaderAPI implements LoadResource {
                     String data = subs.get(k).getData();
                     char sub = subs.get(k).getCode();
                     if (sub == subFieldCode.toCharArray()[0]) {
+                      if(obj.size() <= k){
+                        for (int l = 0; l <= k; l++) {
+                          obj.add(new Object[] { null });
+                        }
+                      }
                       String delim = String.valueOf(sub);
                       if(rules != null){
                         data = processRules(data, rules, preCompiledJS, engine, leader[0]);
@@ -373,52 +409,40 @@ public class LoaderAPI implements LoadResource {
                           subField2Data.get(String.valueOf(delim)).append(subField2Delimiter.get(delim));
                         }
                       }
-                      else if(sb1.length() > 0){
-                        sb1.append(" ");
-                      }
                       // remove \ char if it is the last char of the text
                       if (data.endsWith("\\")) {
                         data = data.substring(0, data.length() - 1);
                       }
-                      // replace our delmiter | with ' ' and escape " with \\"
-                      data = data.replace('|', ' ');// .replace("\\\\", "");
                       data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
                       if(delimiters != null){
                         subField2Data.get(String.valueOf(sub)).append(data);
                       }
                       else{
-                        sb1.append(data);
+                        StringBuffer sb = buffers2concat.get(0);
+                        if(sb.length() > 0){
+                          sb.append(" ");
+                        }
+                        sb.append(data);
+                      }
+                      if(entityRequestedPerRepeatedSubfield && entityRequested){
+                        if(obj.get(k)[0] != null){
+                          createNewComplexObj = false;
+                        }
+                        else{
+                          createNewComplexObj = true;
+                        }
+                        createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, obj.get(k));
                       }
                     }
                   }
                 }
-                String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
-                if (!isMappingValid(object, embeddedFields)) {
-                  log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
-                  continue;
-                }
-                StringBuffer finalData = new StringBuffer();
-                if(delimiters != null){
-                  int size = buffers2concat.size();
-                  for(int x=0; x<size; x++){
-                    StringBuffer sb = buffers2concat.get(x);
-                    if(sb.length() > 0){
-                      if(finalData.length() > 0){
-                        finalData.append(separator[0]);
-                      }
-                      finalData.append(sb);
-                    }
+                if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
+                  boolean created =
+                      createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, rememberComplexObj);
+                  if(created){
+                    createNewComplexObj = false;
                   }
                 }
-                else{
-                  finalData = sb1;
-                }
-                if(finalData.length() == 0){
-                  continue;
-                }
-                Object val = getValue(object, embeddedFields, finalData.toString());
-                buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-                createNewComplexObj = false;
                 ((Instance)object).setId(UUID.randomUUID().toString());
               }
               if(entityRequested){
@@ -485,18 +509,29 @@ public class LoaderAPI implements LoadResource {
     });
   }
 
-  private boolean createNewObject(JsonObject obj){
-    if(obj.containsKey("standaloneObject")){
-      if(obj.getBoolean("standaloneObject")){
-        return true;
+  private boolean createNewObject(String embeddedFields[], Object object,
+      List<StringBuffer> buffers2concat, String separator, boolean createNewComplexObj, Object rememberComplexObj[]) throws Exception {
+    StringBuffer finalData = new StringBuffer();
+    int size = buffers2concat.size();
+    for(int x=0; x<size; x++){
+      StringBuffer sb = buffers2concat.get(x);
+      if(sb.length() > 0){
+        if(finalData.length() > 0){
+          finalData.append(separator);
+        }
+        finalData.append(sb);
       }
-      else{
+    }
+    if(finalData.length() != 0){
+      Object val = getValue(object, embeddedFields, finalData.toString());
+      try {
+        return buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
         return false;
       }
     }
-    else{
-      return false;
-    }
+    return false;
   }
 
   private String processRules(String data, JsonArray rules, Map<Integer, CompiledScript> preCompiledJS, ScriptEngine engine, Leader leader){
@@ -674,7 +709,7 @@ public class LoaderAPI implements LoadResource {
     return sb.toString();
   }
 
-  public static String buildObject(Object object, String[] path, boolean newComp, Object val,
+  public static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
       Object[] complexPreviouslyCreated) {
     Object instance = object;
     Class<?> type = null;
@@ -683,7 +718,6 @@ public class LoaderAPI implements LoadResource {
       try {
         Field field = object.getClass().getDeclaredField(path[j]);
         type = field.getType();
-
         if (type.isAssignableFrom(java.util.List.class)
             || type.isAssignableFrom(java.util.Set.class)) {
           Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
@@ -720,14 +754,12 @@ public class LoaderAPI implements LoadResource {
           object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]),
             new Class[] { val.getClass() }).invoke(object, val);
         }
-        if (!(j == path.length - 1)) {
-          // sb.append(".");
-        }
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
+        return false;
       }
     }
-    return null;// sb.toString();
+    return true;// sb.toString();
   }
 
   public static Object getValue(Object object, String[] path, String value) {
