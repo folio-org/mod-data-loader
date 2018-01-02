@@ -233,7 +233,8 @@
       "subfield": [
         "a",
         "y",
-        "5"
+        "5",
+        "z"
       ],
       "description": "local subjects",
       "target": "subjects"
@@ -326,27 +327,19 @@
             }
           ],
           "value": "book"
-        },
+        }
+      ]
+    },
+    {
+      "subfield": [],
+      "description": "",
+      "target": "languages",
+      "rules": [
         {
           "conditions": [
             {
               "type": "char_select",
-              "parameter": "1-2",
-              "value": "78"
-            },
-            {
-              "type": "char_select",
-              "parameter": "0",
-              "value": "0",
-              "LDR": true
-            }
-          ],
-          "value": "Books."
-        },
-        {
-          "conditions": [
-            {
-              "type": "remove_ending_punc"
+              "parameter": "36-38"
             }
           ]
         }
