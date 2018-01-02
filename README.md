@@ -99,17 +99,30 @@ Ex.
 ]
 ```
 
+#### Mapping partial data
+
+To set an instance field with part of the data appearing in a specific subfield,
+```
+"rules": [
+  {
+    "conditions": [
+      {
+        "type": "char_select",
+        "parameter": "35-37"
+      }
+    ]
+  }
+]
+```
+Notice that there is no `value` in the condition and no constant value set at the `rule` level.
+
 #### Multiple subfields
 
 Indicating multiple subfields will concat the values of each subfield into the target instance field
 ```
 "690": [
     {
-      "subfield": [
-        "a",
-        "y",
-        "5"
-      ],
+      "subfield": ["a","y","5"],
       "description": "local subjects",
       "target": "subjects"
     }
