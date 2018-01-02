@@ -249,6 +249,60 @@ As previously mentioned, grouping subfields  `"subfield": [ "a", "y", "5" ]` wil
 ```
 an empty subfields array indicates that this will be used to separate values from different subfield sets (subfields associated with a specific separator).
 
+#### A single subfield into multiple subfields
+
+It is sometimes necessary to parse data in a single subfield and map the output into multiple subfields before processing. 
+For example:
+`041 $aitaspa`
+We may want to take this language field and convert it into two $a subfields before we begin processing. This can be achieved in the following manner:
+
+```
+"041": [
+  {
+    "entityPerRepeatedSubfield": true,
+    "entity": [
+      {
+        "subfield": ["a"],
+        "subFieldSplit": {
+          "type": "custom",
+          "value": "DATA.match(/.{1,3}/g)"
+        },
+        "rules": [
+          {
+            "conditions": [
+              {
+                "type": "trim"
+              }
+            ]
+          }
+        ],
+        "description": "",
+        "target": "languages"          
+      }
+...
+```
+
+Once pre-processing is complete, the regular rules / mappings will be applied - this includes the entity option which can map each of the newly created subfields into sseparate objects.
+
+There are currently 2 functions that can be called to parse the data within a single subfield
+
+ **`split_every`** which receives a value indicating a hard split every n characters     
+```
+"subFieldSplit": {
+           "type": "custom",
+           "value": "DATA.match(/.{1,3}/g)"
+         },
+```
+
+**`custom`** - which receives a javascript function and must return a string array representing the new values generated from the original data.
+```
+"subFieldSplit": {
+  "type": "custom",
+  "value": "DATA.match(/.{1,3}/g)"
+}
+```
+
+
 
 **Note**:
 
