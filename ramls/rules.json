@@ -78,7 +78,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace(',' , ' ');"
+              "value": "DATA.replace(',' , '!@#$!');"
             }
           ]
         }
@@ -158,7 +158,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace(',' , ' ');"
+              "value": "DATA.replace(',' , '!@#$!');"
             }
           ]
         }
@@ -177,7 +177,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace(',' , ' ');"
+              "value": "DATA.replace(',' , '!@#$!');"
             }
           ]
         }
@@ -187,34 +187,19 @@
   "600": [
     {
       "subfield": [
-        "a",
-        "b",
-        "c",
-        "d",
-        "v",
-        "x",
-        "y",
-        "z"
+        "a","b","c","d","v","x","y","z"
       ],
       "description": "",
       "subFieldDelimiter": [
         {
           "value": "--",
           "subfields": [
-            "d",
-            "v",
-            "x",
-            "y",
-            "z"
+            "d","v","x","y","z"
           ]
         },
         {
           "value": " ",
-          "subfields": [
-            "a",
-            "b",
-            "c"
-          ]
+          "subfields": ["a", "b", "c"]
         },
         {
           "value": "&&&",
@@ -236,7 +221,7 @@
           "conditions": [
             {
               "type": "custom, trim",
-              "value": "DATA.replace(',' , ' ');"
+              "value": "DATA.replace(',' , ' !@#$! ');"
             }
           ]
         }
@@ -448,9 +433,7 @@
         },
         {
           "target": "classifications.classificationNumber",
-          "subfield": [
-            "a"
-          ]
+          "subfield": ["a"]
         }
       ]
     },
@@ -469,9 +452,7 @@
         },
         {
           "target": "classifications.classificationNumber",
-          "subfield": [
-            "b"
-          ]
+          "subfield": ["b"]
         }
       ]
     }
@@ -483,6 +464,43 @@
       ],
       "description": "",
       "target": "identifiers"
+    }
+  ],
+  "041": [
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "subfield": ["a"],
+          "subFieldSplit": {
+            "type": "custom",
+            "value": "DATA.match(/.{1,3}/g)"
+          },
+          "rules": [
+            {
+              "conditions": [
+                {
+                  "type": "trim"
+                }
+              ]
+            }
+          ],
+          "description": "",
+          "target": "languages"          
+        }
+      ]
+    },
+    {
+      "subfield": ["b"],
+      "target": "languages"
+    },
+    {
+      "subfield": ["e"],
+      "target": "languages"
+    },
+    {
+      "subfield": ["h"],
+      "target": "languages"
     }
   ]
 }

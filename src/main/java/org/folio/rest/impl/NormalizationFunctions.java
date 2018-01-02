@@ -1,5 +1,9 @@
 package org.folio.rest.impl;
 
+import java.util.Iterator;
+
+import com.google.common.base.Splitter;
+
 /**
  * @author shale
  *
@@ -10,8 +14,22 @@ public class NormalizationFunctions {
   public static final String REMOVE_ENDING_PUNC = "remove_ending_punc";
   public static final String TRIM = "trim";
   public static final String TRIM_PERIOD = "trim_period";
+  public static final String SPLIT_FUNCTION_SPLIT_EVERY = "split_every";
+
+  public static Iterator<?> runSplitFunction(String funcName, String val, String param){
+    if(val == null){
+      return null;
+    }
+    if(SPLIT_FUNCTION_SPLIT_EVERY.equals(funcName)){
+      return splitEvery(val, param);
+    }
+    return null;
+  }
 
   public static String runFunction(String funcName, String val, String param){
+    if(val == null){
+      return "";
+    }
     if(CHAR_SELECT.equals(funcName)){
       return charSelect(val, param);
     }
@@ -27,10 +45,11 @@ public class NormalizationFunctions {
     return "";
   }
 
+  private static Iterator<String> splitEvery(String val, String param) {
+    return Splitter.fixedLength(Integer.parseInt(param)).split(val).iterator();
+  }
+
   public static String charSelect(String val, String pos){
-    if(val == null){
-      return "";
-    }
     try{
       if(pos.contains("-")){
         String []range = pos.split("-");

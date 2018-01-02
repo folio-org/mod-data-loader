@@ -21,6 +21,7 @@ import javax.script.Compilable;
 import javax.script.CompiledScript;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 import javax.ws.rs.core.Response;
 
@@ -49,6 +50,7 @@ import org.marc4j.marc.DataField;
 import org.marc4j.marc.Leader;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.Subfield;
+import org.marc4j.marc.impl.SubfieldImpl;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -76,6 +78,8 @@ public class LoaderAPI implements LoadResource {
   private HttpClientInterface client;
   private String url;
   private StringBuffer importSQLStatement = new StringBuffer();
+  private ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
+  private Map<Integer, CompiledScript> preCompiledJS = new HashMap<>();
 
   @Override
   public void postLoadMarcRules(InputStream entity, Map<String, String> okapiHeaders,
@@ -215,9 +219,6 @@ public class LoaderAPI implements LoadResource {
     long jsPerfTime[] = new long[]{0};
     long jsPerfCount[] = new long[]{0};
 
-    ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
-    Map<Integer, CompiledScript> preCompiledJS = new HashMap<>();
-
     JsonObject rulesFile = tenantRulesMap.get(tenantId);
 
     if(rulesFile == null){
@@ -268,7 +269,7 @@ public class LoaderAPI implements LoadResource {
               //the content of the control field
               String data = controlField.getData();
               if(rules != null){
-                data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+                data = processRules(data, rules, leader[0]);
               }
               if(data != null){
                 data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
@@ -333,10 +334,13 @@ public class LoaderAPI implements LoadResource {
               }
               List<Object[]> obj = new ArrayList<>();
               for (int z = 0; z < instanceField.size(); z++) {
-                JsonArray subFields = instanceField.getJsonObject(z).getJsonArray("subfield");
+                JsonObject jObj = instanceField.getJsonObject(z);
+                JsonArray subFields = jObj.getJsonArray("subfield");
+                //push into a set so that we can do a lookup for each subfield in the marc instead
+                //of looping over the array
                 Set<String> subFieldsSet = new HashSet<String>(subFields.getList());
                 //it can be a one to one mapping, or there could be rules to apply prior to the mapping
-                JsonArray rules = instanceField.getJsonObject(z).getJsonArray("rules");
+                JsonArray rules = jObj.getJsonArray("rules");
                 //allow to declare a delimiter when concatenating subfields.
                 //also allow , in a multi subfield field, to have some subfields with delimiter x and
                 //some with delimiter y, and include a separator to separate each set of subfields
@@ -345,7 +349,7 @@ public class LoaderAPI implements LoadResource {
                 //same stringbuffer for subfields with the same delimiter - the stringbuffer references are
                 //maintained in the buffers2concat list which is then iterated over and we place a separator
                 //between the content of each string buffer reference's content
-                JsonArray delimiters = instanceField.getJsonObject(z).getJsonArray("subFieldDelimiter");
+                JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
                 //this is a map of each subfield to the delimiter to delimit it with
                 final Map<String, String> subField2Delimiter = new HashMap<>();
                 //map a subfield to a stringbuffer which will hold its content
@@ -376,13 +380,18 @@ public class LoaderAPI implements LoadResource {
                 else{
                   buffers2concat.add(new StringBuffer());
                 }
-                String embeddedFields[] = instanceField.getJsonObject(z).getString("target").split("\\.");
+                String embeddedFields[] = jObj.getString("target").split("\\.");
                 if (!isMappingValid(object, embeddedFields)) {
-                  log.debug("bad mapping " + instanceField.getJsonObject(z).encode());
+                  log.debug("bad mapping " + jObj.encode());
                   continue;
                 }
                 //iterate over the subfields in the mapping entry
                 List<Subfield> subs = dataField.getSubfields();
+                //check if we need to expand the subfields into additional subfields
+                JsonObject splitter = jObj.getJsonObject("subFieldSplit");
+                if(splitter != null){
+                  expandSubfields(subs, splitter);
+                }
                 int size = subs.size();
                 for (int k = 0; k < size; k++) {
                   String data = subs.get(k).getData();
@@ -393,12 +402,12 @@ public class LoaderAPI implements LoadResource {
                     if(obj.size() <= k){
                       //temporarily save objects with multiple fields so that the fields of the
                       //same object can be populated with data from different subfields
-                      for (int l = 0; l <= k; l++) {
+                      for (int l = obj.size(); l <= k; l++) {
                         obj.add(new Object[] { null });
                       }
                     }
                     if(rules != null){
-                      data = processRules(data, rules, preCompiledJS, engine, leader[0]);
+                      data = processRules(data, rules, leader[0]);
                     }
                     if(delimiters != null){
                       //delimiters is not null, meaning we have a string buffer for each set of subfields
@@ -417,6 +426,12 @@ public class LoaderAPI implements LoadResource {
                     }
                     else{
                       StringBuffer sb = buffers2concat.get(0);
+                      if(entityRequestedPerRepeatedSubfield){
+                        //create a new value no matter what , since this use case
+                        //indicates that repeated and non-repeated subfields will create a new entity
+                        //so we should not concat values
+                        sb.delete(0, sb.length());
+                      }
                       if(sb.length() > 0){
                         sb.append(" ");
                       }
@@ -531,7 +546,46 @@ public class LoaderAPI implements LoadResource {
     return false;
   }
 
-  private String processRules(String data, JsonArray rules, Map<Integer, CompiledScript> preCompiledJS, ScriptEngine engine, Leader leader){
+  /**
+   * replace the existing subfields in the datafield with subfields generated on the data of the subfield
+   * for example: $aitaspa in 041 would be the language of the record. this can be split into two $a subfields
+   * $aita and $aspa so that it can be concatenated properly or even become two separate fields with the
+   * entity per repeated subfield flag
+   * the data is expanded by the implementing function (can be custom as well) - the implementing function
+   * receives data from ONE subfield at a time - two $a subfields will be processed separately.
+   * @param subs
+   * @param splitConf
+   * @throws ScriptException
+   */
+  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
+    List<Subfield> expandedSubs = new ArrayList<>();
+    String func = splitConf.getString("type");
+    boolean isCustom = false;
+    if("custom".equals(func)){
+      isCustom = true;
+    }
+    String param = splitConf.getString("value");
+    int size = subs.size();
+    for (int k = 0; k < size; k++) {
+      String data = subs.get(k).getData();
+      Iterator<?> splitData = null;
+      if(isCustom){
+        splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)runJScript(param, data)).values().iterator();
+      }
+      else{
+        splitData = NormalizationFunctions.runSplitFunction(func, data, param);
+      }
+      while (splitData.hasNext()) {
+        String newData = (String)splitData.next();
+        Subfield sub = new SubfieldImpl(subs.get(k).getCode(), newData);
+        expandedSubs.add(sub);
+      }
+    }
+    subs.clear();
+    subs.addAll( expandedSubs );
+  }
+
+  private String processRules(String data, JsonArray rules, Leader leader){
     //there are rules associated with this subfield to instance field mapping
     String originalData = data;
     for (int k = 0; k < rules.size(); k++) {
@@ -564,7 +618,7 @@ public class LoaderAPI implements LoadResource {
             break;
           }
         }
-        if(condition.getBoolean("LDR") != null && leader != null){
+        if(leader != null && condition.getBoolean("LDR") != null){
           //the rule also has a condition on the leader field
           data = leader.toString();
         }
@@ -573,15 +627,7 @@ public class LoaderAPI implements LoadResource {
           if("custom".equals(function[l].trim())){
             long startJS = System.nanoTime();
             try{
-              CompiledScript script = preCompiledJS.get(valueParam.hashCode());
-              if(script == null){
-                log.debug("compiling JS function: " + valueParam);
-                script = ((Compilable) engine).compile(valueParam);
-                preCompiledJS.put(valueParam.hashCode(), script);
-              }
-              Bindings bindings = new SimpleBindings();
-              bindings.put("DATA", data);
-              data = (String)script.eval(bindings);
+              data = (String)runJScript(valueParam, data);
             }
             catch(Exception e){
               //the function has thrown an exception meaning this condition has failed,
@@ -624,6 +670,18 @@ public class LoaderAPI implements LoadResource {
       }
     }
     return data;
+  }
+
+  private Object runJScript(String jscript, String data) throws ScriptException {
+    CompiledScript script = preCompiledJS.get(jscript.hashCode());
+    if(script == null){
+      log.debug("compiling JS function: " + jscript);
+      script = ((Compilable) engine).compile(jscript);
+      preCompiledJS.put(jscript.hashCode(), script);
+    }
+    Bindings bindings = new SimpleBindings();
+    bindings.put("DATA", data);
+    return script.eval(bindings);
   }
 
   private String managePushToDB(boolean isTest, StringBuffer importSQLStatement, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
