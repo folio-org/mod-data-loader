@@ -295,16 +295,16 @@ We may want to take this language field and convert it into two $a subfields bef
 ...
 ```
 
-Once pre-processing is complete, the regular rules / mappings will be applied - this includes the entity option which can map each of the newly created subfields into sseparate objects.
+Once pre-processing is complete, the regular rules / mappings will be applied - this includes the entity option which can map each of the newly created subfields into separate objects.
 
 There are currently 2 functions that can be called to parse the data within a single subfield
 
  **`split_every`** which receives a value indicating a hard split every n characters     
 ```
 "subFieldSplit": {
-           "type": "custom",
-           "value": "DATA.match(/.{1,3}/g)"
-         },
+   "type": "split_every",
+   "value": "3"
+ },
 ```
 
 **`custom`** - which receives a javascript function and must return a string array representing the new values generated from the original data.
