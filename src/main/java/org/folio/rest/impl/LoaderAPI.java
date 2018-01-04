@@ -151,8 +151,6 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
-    long start = System.currentTimeMillis();
-
     if(!validRequest(asyncResultHandler, okapiHeaders)){
       return;
     }
@@ -216,9 +214,6 @@ public class LoaderAPI implements LoadResource {
 
     long start = System.currentTimeMillis();
 
-    long jsPerfTime[] = new long[]{0};
-    long jsPerfCount[] = new long[]{0};
-
     JsonObject rulesFile = tenantRulesMap.get(tenantId);
 
     if(rulesFile == null){
@@ -249,7 +244,7 @@ public class LoaderAPI implements LoadResource {
           continue;
         }
         Iterator<ControlField> ctrlIter = cf.iterator();
-        Iterator<DataField> iter = df.iterator();
+        Iterator<DataField> dfIter = df.iterator();
         object = new Instance();
         while (ctrlIter.hasNext()) {
           //no subfields
@@ -268,9 +263,7 @@ public class LoaderAPI implements LoadResource {
               JsonArray rules = entryForControlField.getJsonArray("rules");
               //the content of the control field
               String data = controlField.getData();
-              if(rules != null){
-                data = processRules(data, rules, leader[0]);
-              }
+              data = processRules(data, rules, leader[0]);
               if(data != null){
                 data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
                 if(data.length() == 0){
@@ -291,11 +284,11 @@ public class LoaderAPI implements LoadResource {
             }
           }
         }
-        while (iter.hasNext()) {
+        while (dfIter.hasNext()) {
           // this is an iterator on the marc record, field by field
           boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
           Object rememberComplexObj[] = new Object[] { null };
-          DataField dataField = iter.next();
+          DataField dataField = dfIter.next();
           JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
           if (mappingEntry != null) {
             //there is a mapping associated with this marc field
@@ -352,6 +345,13 @@ public class LoaderAPI implements LoadResource {
                 JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
                 //this is a map of each subfield to the delimiter to delimit it with
                 final Map<String, String> subField2Delimiter = new HashMap<>();
+                //should we run rules on each subfield value independently or on the entire concatenated
+                //string, not relevant for non repeatable single subfield declarations or entity declarations
+                //with only one non repeatable subfield
+                boolean applyPost = false;
+                if(jObj.getBoolean("applyRulesOnConcatedData") != null){
+                  applyPost = jObj.getBoolean("applyRulesOnConcatedData");
+                }
                 //map a subfield to a stringbuffer which will hold its content
                 //since subfields can be concatenated into the same stringbuffer
                 //the map of different subfields can map to the same stringbuffer reference
@@ -406,7 +406,11 @@ public class LoaderAPI implements LoadResource {
                         obj.add(new Object[] { null });
                       }
                     }
-                    if(rules != null){
+                    if(rules != null && !applyPost){
+                      //apply rule on the per subfield data. if applyPost is set to true, we need
+                      //to wait and run this after all the data assoicated with this target has been
+                      //concatenated , therefore this can only be done in the createNewObject function
+                      //which has the full set of subfield data
                       data = processRules(data, rules, leader[0]);
                     }
                     if(delimiters != null){
@@ -444,13 +448,18 @@ public class LoaderAPI implements LoadResource {
                       else{
                         createNewComplexObj = true;
                       }
-                      createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, obj.get(k));
+                      String completeData = generateDataString(buffers2concat, separator[0]);
+                      createNewObject(embeddedFields, object, completeData, createNewComplexObj, obj.get(k));
                     }
                   }
                 }
                 if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
+                  String completeData = generateDataString(buffers2concat, separator[0]);
+                  if(applyPost){
+                    completeData = processRules(completeData, rules, leader[0]);
+                  }
                   boolean created =
-                      createNewObject(embeddedFields, object, buffers2concat, separator[0], createNewComplexObj, rememberComplexObj);
+                      createNewObject(embeddedFields, object, completeData, createNewComplexObj, rememberComplexObj);
                   if(created){
                     createNewComplexObj = false;
                   }
@@ -516,13 +525,46 @@ public class LoaderAPI implements LoadResource {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadMarcDataResponse.withCreated(whenDone.result().toString())));
         }
+        log.info("Completed processing of REQUEST");
         return;
       }
     });
   }
 
-  private boolean createNewObject(String embeddedFields[], Object object,
-      List<StringBuffer> buffers2concat, String separator, boolean createNewComplexObj, Object rememberComplexObj[]) throws Exception {
+  /**
+   * create the need part of the instance object based on the target and the string buffers containing the
+   * content per subfield sets
+   * @param embeddedFields - the targer
+   * @param object - the instance object
+   * @param createNewComplexObj - whether to create a new object within the instance object - for example,
+   * a new classification object, or set a value for a field in an existing object
+   * @param rememberComplexObj - the current object within the instance object we are currently populating
+   * this can be null if we are now creating a new object within the instance object
+   * @return
+   * @throws Exception
+   */
+  private boolean createNewObject(String embeddedFields[], Object object, String data,
+       boolean createNewComplexObj, Object rememberComplexObj[]) throws Exception {
+
+    if(data.length() != 0){
+      Object val = getValue(object, embeddedFields, data);
+      try {
+        return buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param buffers2concat - list of string buffers, each one representing the data belonging to a set of
+   * subfields concatenated together, so for example, 2 sets of subfields will mean two entries in the list
+   * @param separator - separator between sets of subfields
+   * @return
+   */
+  private String generateDataString(List<StringBuffer> buffers2concat, String separator){
     StringBuffer finalData = new StringBuffer();
     int size = buffers2concat.size();
     for(int x=0; x<size; x++){
@@ -534,16 +576,7 @@ public class LoaderAPI implements LoadResource {
         finalData.append(sb);
       }
     }
-    if(finalData.length() != 0){
-      Object val = getValue(object, embeddedFields, finalData.toString());
-      try {
-        return buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        return false;
-      }
-    }
-    return false;
+    return finalData.toString();
   }
 
   /**
@@ -586,6 +619,9 @@ public class LoaderAPI implements LoadResource {
   }
 
   private String processRules(String data, JsonArray rules, Leader leader){
+    if(rules == null){
+      return data;
+    }
     //there are rules associated with this subfield to instance field mapping
     String originalData = data;
     for (int k = 0; k < rules.size(); k++) {
@@ -625,7 +661,6 @@ public class LoaderAPI implements LoadResource {
         String valueParam = condition.getString("value");
         for (int l = 0; l < function.length; l++) {
           if("custom".equals(function[l].trim())){
-            long startJS = System.nanoTime();
             try{
               data = (String)runJScript(valueParam, data);
             }
@@ -635,9 +670,6 @@ public class LoaderAPI implements LoadResource {
               conditionsMet = false;
               log.error(e.getMessage(), e);
             }
-            long endtJS = System.nanoTime();
-            //jsPerfTime[0] = jsPerfTime[0]+(endtJS-startJS);
-            //jsPerfCount[0]++;
           }
           else{
             String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
@@ -649,7 +681,7 @@ public class LoaderAPI implements LoadResource {
             }
             else if (ruleConstVal == null){
               //if there is no val to use as a replacement , then assume the function
-              //is doing the value update and set the data to the returned value
+              //is doing generating the needed value and set the data to the returned value
               data = c;
             }
           }

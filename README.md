@@ -315,6 +315,21 @@ There are currently 2 functions that can be called to parse the data within a si
 }
 ```
 
+#### Processing rules on concatenated data
+
+By default rules run on the data in a single subfield, hence, concatenated subfields concatenate normalized data. In order to concatenate
+un-normalized data, and run the rules on the concatenated data add the following field: `"applyRulesOnConcatedData": true,`
+This can be used when punctuation should only be removed from the end of a concatenated string.
+```
+"500": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "applyRulesOnConcatedData": true,
+      "description": "",
+```
+
 #### Json fields supported only on data field (not control fields)
 
 1. `subFieldSplit`

@@ -170,6 +170,7 @@
       "subfield": [
         "a"
       ],
+      "applyRulesOnConcatedData": true,
       "description": "",
       "target": "notes",
       "rules": [
