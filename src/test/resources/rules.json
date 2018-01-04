@@ -1,0 +1,499 @@
+{
+  "100": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "contributors.name",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim_period"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        },
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc",
+              "parameter": "",
+              "value": "Books"
+            }
+          ],
+          "value": "Books"
+        }
+      ]
+    },
+    {
+      "subfield": [
+        "6"
+      ],
+      "description": "",
+      "target": "contributors.contributorTypeId"
+    }
+  ],
+  "245": [
+    {
+      "subfield": [
+        "6"
+      ],
+      "description": "",
+      "target": "alternativeTitles"
+    },
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "title",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' ');"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "alternativeTitles",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , '!@#$!');"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "246": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "alternativeTitles"
+    }
+  ],
+  "250": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "edition"
+    }
+  ],
+  "260": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "publication.place",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "publication.publisher"
+    },
+    {
+      "subfield": [
+        "c"
+      ],
+      "description": "",
+      "target": "publication.dateOfPublication",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(/\\D/g,'');"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "300": [
+    {
+      "subfield": [
+        "a",
+        "c"
+      ],
+      "description": "",
+      "target": "physicalDescriptions",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , '!@#$!');"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "500": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "notes",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , '!@#$!');"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "600": [
+    {
+      "subfield": [
+        "a","b","c","d","v","x","y","z"
+      ],
+      "description": "",
+      "subFieldDelimiter": [
+        {
+          "value": "--",
+          "subfields": [
+            "d","v","x","y","z"
+          ]
+        },
+        {
+          "value": " ",
+          "subfields": ["a", "b", "c"]
+        },
+        {
+          "value": "&&&",
+          "subfields": []
+        }
+      ],
+      "target": "subjects"
+    }
+  ],
+  "651": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "subjects",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "custom, trim",
+              "value": "DATA.replace(',' , ' !@#$! ');"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "690": [
+    {
+      "subfield": [
+        "a",
+        "y",
+        "5",
+        "z"
+      ],
+      "description": "local subjects",
+      "target": "subjects"
+    }
+  ],
+  "710": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "contributors.name",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc,trim"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subfield": [
+        "5"
+      ],
+      "description": "",
+      "target": "contributors.contributorTypeId"
+    }
+  ],
+  "786": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "source"
+    }
+  ],
+  "001": [
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [],
+          "value": "5d164f4b-0b15-4e42-ae75-cfcf85318ad9"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (001)",
+      "subfield": [],
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "008": [
+    {
+      "subfield": [],
+      "description": "",
+      "target": "instanceTypeId",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "7"
+            },
+            {
+              "type": "char_select",
+              "parameter": "1",
+              "value": "8"
+            },
+            {
+              "type": "char_select",
+              "parameter": "0",
+              "value": "0",
+              "LDR": true
+            }
+          ],
+          "value": "book"
+        }
+      ]
+    },
+    {
+      "subfield": [],
+      "description": "",
+      "target": "languages",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "char_select",
+              "parameter": "36-38"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "020": [
+    {
+      "entity": [
+        {
+          "target": "identifiers.identifierTypeId",
+          "description": "Type for Control Number (020)",
+          "subfield": [
+            "a"
+          ],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "8261054f-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "identifiers.value",
+          "description": "Control Number (020)",
+          "subfield": [
+            "a"
+          ],
+          "rules": [
+            {
+              "conditions": [
+                {
+                  "type": "trim"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "identifiers.identifierTypeId",
+      "description": "Type for Control Number (020)",
+      "subfield": [
+        "c"
+      ],
+      "rules": [
+        {
+          "conditions": [],
+          "value": "8261054f-be78-422d-bd51-4ed9f33c3499"
+        }
+      ]
+    },
+    {
+      "target": "identifiers.value",
+      "description": "Control Number (020)",
+      "subfield": [
+        "c"
+      ],
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "trim"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+ "050": [
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["a"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3422"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": ["a"]
+        }
+      ]
+    },
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "target": "classifications.classificationTypeId",
+          "subfield": ["b"],
+          "rules": [
+            {
+              "conditions": [],
+              "value": "99999999-be78-422d-bd51-4ed9f33c3423"
+            }
+          ]
+        },
+        {
+          "target": "classifications.classificationNumber",
+          "subfield": ["b"]
+        }
+      ]
+    }
+  ],
+  "035": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "identifiers"
+    }
+  ],
+  "041": [
+    {
+      "entityPerRepeatedSubfield": true,
+      "entity": [
+        {
+          "subfield": ["a"],
+          "subFieldSplit": {
+            "type": "custom",
+            "value": "DATA.match(/.{1,3}/g)"
+          },
+          "rules": [
+            {
+              "conditions": [
+                {
+                  "type": "trim"
+                }
+              ]
+            }
+          ],
+          "description": "",
+          "target": "languages"          
+        }
+      ]
+    },
+    {
+      "subfield": ["b"],
+      "target": "languages"
+    },
+    {
+      "subfield": ["e"],
+      "target": "languages"
+    },
+    {
+      "subfield": ["h"],
+      "target": "languages"
+    }
+  ]
+}
