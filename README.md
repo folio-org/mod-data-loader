@@ -315,6 +315,13 @@ There are currently 2 functions that can be called to parse the data within a si
 }
 ```
 
+#### Json fields supported only on data field (not control fields)
+
+1. `subFieldSplit`
+2. `subFieldDelimiter`
+3. `applyRulesOnConcatedData`
+4. `entity`
+5. `entityPerRepeatedSubfield`
 
 
 **Note**:
