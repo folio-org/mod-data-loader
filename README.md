@@ -326,7 +326,7 @@ This can be used when punctuation should only be removed from the end of a conca
       "subfield": [
         "a"
       ],
-      "applyRulesOnConcatedData": true,
+      "applyRulesOnConcatenatedData": true,
       "description": "",
 ```
 
@@ -334,7 +334,7 @@ This can be used when punctuation should only be removed from the end of a conca
 
 1. `subFieldSplit`
 2. `subFieldDelimiter`
-3. `applyRulesOnConcatedData`
+3. `applyRulesOnConcatenatedData`
 4. `entity`
 5. `entityPerRepeatedSubfield`
 
