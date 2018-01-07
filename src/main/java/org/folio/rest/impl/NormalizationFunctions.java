@@ -59,15 +59,19 @@ public class NormalizationFunctions {
       return val.substring(p,p+1);
     }
     catch(Exception e){
-      return "";
+      return val;
     }
   }
 
   public static String trimPeriod(final String input){
-    if('.' == input.charAt(input.length()-1)){
-      return input.substring(0, input.length()-1);
+    try{
+      if('.' == input.charAt(input.length()-1)){
+        return input.substring(0, input.length()-1);
+      }
+      return input;
+    }catch(Exception e){
+      return input;
     }
-    return input;
   }
 
   public static String trim(String val){
