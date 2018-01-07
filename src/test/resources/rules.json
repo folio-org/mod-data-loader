@@ -96,6 +96,7 @@
   ],
   "250": [
     {
+      "applyRulesOnConcatenatedData": true,
       "subfield": [
         "a"
       ],
@@ -147,6 +148,7 @@
   ],
   "300": [
     {
+      "applyRulesOnConcatenatedData": true,    
       "subfield": [
         "a",
         "c"
@@ -170,7 +172,7 @@
       "subfield": [
         "a"
       ],
-      "applyRulesOnConcatedData": true,
+      "applyRulesOnConcatenatedData": true,
       "description": "",
       "target": "notes",
       "rules": [
@@ -268,6 +270,7 @@
   ],
   "786": [
     {
+      "applyRulesOnConcatenatedData": true,
       "subfield": [
         "a"
       ],

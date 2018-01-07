@@ -349,8 +349,8 @@ public class LoaderAPI implements LoadResource {
                 //string, not relevant for non repeatable single subfield declarations or entity declarations
                 //with only one non repeatable subfield
                 boolean applyPost = false;
-                if(jObj.getBoolean("applyRulesOnConcatedData") != null){
-                  applyPost = jObj.getBoolean("applyRulesOnConcatedData");
+                if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
+                  applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
                 }
                 //map a subfield to a stringbuffer which will hold its content
                 //since subfields can be concatenated into the same stringbuffer
