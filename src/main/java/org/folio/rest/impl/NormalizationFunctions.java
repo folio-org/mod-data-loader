@@ -53,7 +53,7 @@ public class NormalizationFunctions {
     try{
       if(pos.contains("-")){
         String []range = pos.split("-");
-        return val.substring(Integer.parseInt(range[0])-1, Integer.parseInt(range[1]));
+        return val.substring(Integer.parseInt(range[0]), Integer.parseInt(range[1])+1);
       }
       int p = Integer.parseInt(pos);
       return val.substring(p,p+1);

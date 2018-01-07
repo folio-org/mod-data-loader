@@ -340,7 +340,7 @@
           "conditions": [
             {
               "type": "char_select",
-              "parameter": "36-38"
+              "parameter": "35-37"
             }
           ]
         }
