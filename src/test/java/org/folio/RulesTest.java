@@ -140,7 +140,12 @@ public class RulesTest {
         body.get(i).substring(body.get(i).indexOf("|")+1),
         Instance.class);
       instance.setId(null);
-      JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
+      try {
+        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
+      } catch (Exception e) {
+        System.out.println("error at " + (i+1));
+        e.printStackTrace();
+      }
     }
     System.out.println("all "+lines.size()+" lines matched...");
   }

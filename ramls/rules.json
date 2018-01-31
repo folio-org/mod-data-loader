@@ -69,41 +69,15 @@
   ],
   "245": [
     {
-      "subfield": [
-        "6"
-      ],
-      "description": "",
-      "target": "alternativeTitles"
-    },
-    {
-      "subfield": [
-        "a"
-      ],
-      "description": "",
       "target": "title",
+      "description": "Resource Title",
+      "subfield": ["a","b","c","f","g","h","k","n","p","s"],
+      "applyRulesOnConcatenatedData": true,
       "rules": [
         {
           "conditions": [
             {
-              "type": "custom, trim",
-              "value": "DATA.replace(',' , ' ');"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "subfield": [
-        "b"
-      ],
-      "description": "",
-      "target": "alternativeTitles",
-      "rules": [
-        {
-          "conditions": [
-            {
-              "type": "custom, trim",
-              "value": "DATA.replace(',' , '!@#$!');"
+              "type": "remove_ending_punc, trim"
             }
           ]
         }

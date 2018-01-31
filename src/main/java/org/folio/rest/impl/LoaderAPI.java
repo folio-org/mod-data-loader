@@ -420,11 +420,6 @@ public class LoaderAPI implements LoadResource {
                         subField2Data.get(String.valueOf(subfield)).append(subField2Delimiter.get(subfield));
                       }
                     }
-                    // remove \ char if it is the last char of the text
-                    if (data.endsWith("\\")) {
-                      data = data.substring(0, data.length() - 1);
-                    }
-                    data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
                     if(delimiters != null){
                       subField2Data.get(subfield).append(data);
                     }
@@ -701,6 +696,11 @@ public class LoaderAPI implements LoadResource {
         break;
       }
     }
+    // remove \ char if it is the last char of the text
+    if (data.endsWith("\\")) {
+      data = data.substring(0, data.length() - 1);
+    }
+    data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
     return data;
   }
 
