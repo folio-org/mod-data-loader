@@ -1,7 +1,6 @@
 package org.folio;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,12 +11,17 @@ import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.jaxrs.model.Instance;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
@@ -37,6 +41,7 @@ public class RulesTest {
   private static int port;
   HttpClient client = vertx.createHttpClient();
   private static Locale oldLocale = Locale.getDefault();
+  ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
@@ -131,12 +136,11 @@ public class RulesTest {
     assertEquals(201, t.getStatusCode());
     List<String> body = getBodyAsList(t.body);
     for(int i=0; i<lines.size(); i++){
-      if(!body.get(i).contains(lines.get(i))){
-        System.out.println(body.get(i));
-        System.out.println("------------------------------------------------");
-        System.out.println(lines.get(i));
-        assertTrue("mismatch at line " + (i+1), false);
-      }
+      Instance instance = jsonMapper.readValue(
+        body.get(i).substring(body.get(i).indexOf("|")+1),
+        Instance.class);
+      instance.setId(null);
+      JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
     }
     System.out.println("all "+lines.size()+" lines matched...");
   }

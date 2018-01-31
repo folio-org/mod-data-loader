@@ -1,4 +1,29 @@
 {
+  "710": [
+    {
+      "subfield": [
+        "a"
+      ],
+      "description": "",
+      "target": "contributors.contributorTypeId",
+      "rules": [
+        {
+          "conditions": [
+            {
+              "type": "remove_ending_punc,trim"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "subfield": [
+        "b"
+      ],
+      "description": "",
+      "target": "contributors.name"
+    }
+  ],
   "100": [
     {
       "subfield": [
@@ -239,31 +264,6 @@
       ],
       "description": "local subjects",
       "target": "subjects"
-    }
-  ],
-  "710": [
-    {
-      "subfield": [
-        "a"
-      ],
-      "description": "",
-      "target": "contributors.name",
-      "rules": [
-        {
-          "conditions": [
-            {
-              "type": "remove_ending_punc,trim"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "subfield": [
-        "5"
-      ],
-      "description": "",
-      "target": "contributors.contributorTypeId"
     }
   ],
   "786": [
