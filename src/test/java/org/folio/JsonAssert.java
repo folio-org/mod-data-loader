@@ -14,6 +14,12 @@ class JsonAssert {
         JsonNode tree1 = mapper.readTree(json1);
         JsonNode tree2 = mapper.readTree(json2);
 
+        if(!tree1.equals(tree2)){
+          System.out.println("\n"+tree1);
+          System.out.println("--------------");
+          System.out.println(tree2);
+        }
+
         assert tree1.equals(tree2);
     }
 

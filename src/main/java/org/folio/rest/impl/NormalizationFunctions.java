@@ -15,6 +15,7 @@ public class NormalizationFunctions {
   public static final String TRIM = "trim";
   public static final String TRIM_PERIOD = "trim_period";
   public static final String SPLIT_FUNCTION_SPLIT_EVERY = "split_every";
+  public static final String PUNCT_2_REMOVE = ";:,/+= ";
 
   public static Iterator<?> runSplitFunction(String funcName, String val, String param){
     if(val == null){
@@ -83,9 +84,31 @@ public class NormalizationFunctions {
   }
 
   private static String modified(final String input, int pos){
-    if(!Character.isAlphabetic(input.charAt(pos)) && !Character.isDigit(input.charAt(pos))){
+    if(PUNCT_2_REMOVE.contains(String.valueOf(input.charAt(pos)))){
       return input.substring(0, input.length()-1);
     }
+    else if(input.charAt(pos) == '.'){
+      try{
+        if(input.substring(input.length()-4).equals("....")){
+          return input.substring(0, input.length()-1);
+        }
+        else if(input.substring(input.length()-3).equals("...")){
+          return input;
+        }
+        else {
+          //if ends with .. or . remove just one .
+          return input.substring(0, input.length()-1);
+        }
+      }
+      catch(IndexOutOfBoundsException ioob){
+        return input;
+      }
+    }
+    /*
+       if(!Character.isAlphabetic(input.charAt(pos)) && !Character.isDigit(input.charAt(pos))){
+        return input.substring(0, input.length()-1);
+       }
+    */
     return input;
   }
 }

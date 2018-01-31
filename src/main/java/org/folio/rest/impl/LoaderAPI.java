@@ -406,7 +406,7 @@ public class LoaderAPI implements LoadResource {
                         obj.add(new Object[] { null });
                       }
                     }
-                    if(rules != null && !applyPost){
+                    if(!applyPost){
                       //apply rule on the per subfield data. if applyPost is set to true, we need
                       //to wait and run this after all the data assoicated with this target has been
                       //concatenated , therefore this can only be done in the createNewObject function
@@ -615,7 +615,7 @@ public class LoaderAPI implements LoadResource {
 
   private String processRules(String data, JsonArray rules, Leader leader){
     if(rules == null){
-      return data;
+      return escape(data);
     }
     //there are rules associated with this subfield to instance field mapping
     String originalData = data;
@@ -696,6 +696,11 @@ public class LoaderAPI implements LoadResource {
         break;
       }
     }
+
+    return escape(data);
+  }
+
+  private String escape(String data){
     // remove \ char if it is the last char of the text
     if (data.endsWith("\\")) {
       data = data.substring(0, data.length() - 1);

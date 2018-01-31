@@ -135,12 +135,14 @@ public class RulesTest {
     System.out.println("response for loading marc-data is: " + t.getStatusCode());
     assertEquals(201, t.getStatusCode());
     List<String> body = getBodyAsList(t.body);
+    System.out.print("comparing line....");
     for(int i=0; i<lines.size(); i++){
       Instance instance = jsonMapper.readValue(
         body.get(i).substring(body.get(i).indexOf("|")+1),
         Instance.class);
       instance.setId(null);
       try {
+        System.out.print((i+1) + " ");
         JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
       } catch (Exception e) {
         System.out.println("error at " + (i+1));
