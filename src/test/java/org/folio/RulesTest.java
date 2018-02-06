@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
@@ -76,6 +77,12 @@ public class RulesTest {
         deploymentComplete.completeExceptionally(res.cause());
       }
     });
+    //wait for verticle to complete startup
+    try {
+      deploymentComplete.get();
+    } catch (InterruptedException | ExecutionException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
