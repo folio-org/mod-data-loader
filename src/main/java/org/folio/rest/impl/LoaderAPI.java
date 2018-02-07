@@ -1127,8 +1127,8 @@ public class LoaderAPI implements LoadResource {
           importSQLStatement.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
         }
-        importSQLStatement.append("\\.");
         if(!isTest){
+          importSQLStatement.append("\\.");
           HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
           if (response.getStatusLine().getStatusCode() != 200) {
             String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
