@@ -379,7 +379,7 @@ public class LoaderAPI implements LoadResource {
                     }
                     if(!applyPost){
                       //apply rule on the per subfield data. if applyPost is set to true, we need
-                      //to wait and run this after all the data assoicated with this target has been
+                      //to wait and run this after all the data associated with this target has been
                       //concatenated , therefore this can only be done in the createNewObject function
                       //which has the full set of subfield data
                       data = processRules(data, rules, leader[0]);
@@ -438,23 +438,15 @@ public class LoaderAPI implements LoadResource {
             }
           }
         }
-        String res = managePushToDB(isTest, importSQLStatement, tenantId, object, false, okapiHeaders);
-        if(res != null){
-          block.fail(new Exception(res));
-          log.error(res);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing first " + processedCount +
-              " records. " + res)));
+        String error = managePushToDB(isTest, importSQLStatement, tenantId, object, false, okapiHeaders);
+        if(error != null){
+          block.fail(new Exception(error));
           return;
         }
       }
-      String res = managePushToDB(isTest, importSQLStatement, tenantId, null, true, okapiHeaders);
-      if(res != null){
-        block.fail(new Exception(res));
-        log.error(res);
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing first " + processedCount +
-            " records. " + res)));
+      String error = managePushToDB(isTest, importSQLStatement, tenantId, null, true, okapiHeaders);
+      if(error != null){
+        block.fail(new Exception(error));
         return;
       }
       System.out.println(processedCount);
@@ -464,10 +456,6 @@ public class LoaderAPI implements LoadResource {
     }
     catch(Exception e){
       block.fail(e);
-      log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing record #" + processedCount +
-          ". " + e.getMessage())));
       return;
     }
     finally {
@@ -490,6 +478,12 @@ public class LoaderAPI implements LoadResource {
         }
         log.info("Completed processing of REQUEST");
         return;
+      }
+      else{
+        log.error(whenDone.cause().getMessage(), whenDone.cause());
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+          PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing record #" + processedCount +
+            ". " + whenDone.cause().getMessage())));
       }
     });
   }
@@ -781,17 +775,21 @@ public class LoaderAPI implements LoadResource {
     counter++;
     if (counter == bulkSize || done) {
       counter = 0;
-      if(!isTest){
-        importSQLStatement.append("\\.");
-        HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-        importSQLStatement.delete(0, importSQLStatement.length());
-        if (response.getStatusLine().getStatusCode() != 200) {
-          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
-          log.error(e);
-          return e;
+      try {
+        if(!isTest){
+          importSQLStatement.append("\\.");
+          HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+          importSQLStatement.delete(0, importSQLStatement.length());
+          if (response.getStatusLine().getStatusCode() != 200) {
+            String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+            log.error(e);
+            return e;
+          }
         }
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        return e.getMessage();
       }
-      //ok
       return null;
     }
     return null;
@@ -800,28 +798,34 @@ public class LoaderAPI implements LoadResource {
   private HttpResponse post(String url, StringBuffer data, Map<String, String> okapiHeaders)
       throws ClientProtocolException, IOException {
 
-    RequestConfig config = RequestConfig.custom()
-      .setConnectTimeout(2 * 1000)
-      .setConnectionRequestTimeout(5 * 1000)
-      .setSocketTimeout(2 * 1000).build();
-    CloseableHttpClient httpclient =
-      HttpClientBuilder.create().setDefaultRequestConfig(config).build();
-
-    HttpPost httpPost = new HttpPost(url);
-
-    StringEntity entity = new StringEntity(data.toString(), "UTF8");
-    httpPost.setEntity(entity);
-    httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
-    httpPost.setHeader(RestVerticle.OKAPI_HEADER_TOKEN, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
-    httpPost.setHeader(RestVerticle.OKAPI_USERID_HEADER, okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
-    httpPost.setHeader("Content-type", "application/octet-stream");
-    httpPost.setHeader("Accept", "text/plain");
-    // Execute the request
-    HttpResponse response = httpclient.execute(httpPost);
-    // Examine the response status
-    entity = null;
-    return response;
+    CloseableHttpClient httpclient = null;
+    try {
+      RequestConfig config = RequestConfig.custom().setConnectTimeout(
+        3 * 1000).setConnectionRequestTimeout(120 * 1000).setSocketTimeout(3 * 1000).build();
+      httpclient = HttpClientBuilder.create().setDefaultRequestConfig(
+        config).build();
+      HttpPost httpPost = new HttpPost(url);
+      StringEntity entity = new StringEntity(data.toString(), "UTF8");
+      httpPost.setEntity(entity);
+      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT,
+        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
+      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TOKEN,
+        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
+      httpPost.setHeader(RestVerticle.OKAPI_USERID_HEADER,
+        okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
+      httpPost.setHeader("Content-type", "application/octet-stream");
+      httpPost.setHeader("Accept", "text/plain");
+      // Execute the request
+      HttpResponse response = httpclient.execute(httpPost);
+      // Examine the response status
+      entity = null;
+      return response;
+    } finally {
+      if(httpclient != null){
+        httpclient.close();
+      }
     }
+  }
 
   public static String rebuildPath(Object object, String[] path, int loc) {
     StringBuffer sb = new StringBuffer();
