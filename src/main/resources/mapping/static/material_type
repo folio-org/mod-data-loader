@@ -1,0 +1,10 @@
+{
+  "record": {
+    "id": "${randomUUID}"
+  },
+  "values": {
+    "name": ["Book", "Journal" , "Video" , "Audio" , "Map"],
+    "abc": ["Book", "Journal" , "Video" , "Audio" , "Map"]
+  },
+  "type": "material_type"
+}

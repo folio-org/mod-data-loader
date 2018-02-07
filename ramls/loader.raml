@@ -123,3 +123,42 @@ schemas:
             body:
               text/plain:
                 example: "Internal server error, contact administrator"
+  /static:
+    post:
+      is: [secured]
+      description: |
+          Uploads a file and saves it to the specified tenant's instance table
+      queryParameters:
+        storageURL:
+          displayName: StorageURL
+          type: string
+          description: host and port of the inventory storage module
+          example: http://host:port
+          required: true
+      body:
+        application/octet-stream:
+      responses:
+        201:
+          description: "Saved"
+          headers:
+            X-Unprocessed:
+              description: line number of unprocessed (failed) records within attached file
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: |
+                "unable to add <<resourcePathName|!singularize>>"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+    get:
+      responses:
+        405:
+          description: "Not implemented"
+          body:
+            text/plain:
+              example: |
+                "Not implemented"

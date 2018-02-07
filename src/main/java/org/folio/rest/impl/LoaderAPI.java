@@ -28,10 +28,11 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.folio.rest.RestVerticle;
@@ -44,6 +45,7 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.util.IoUtil;
 import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
@@ -164,25 +166,31 @@ public class LoaderAPI implements LoadResource {
 
     client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
-    //check if inventory storage is respnding
+    //check if inventory storage is responding
     Map<String, String> headers = new HashMap<>();
     headers.put("Accept", "text/plain");
     CompletableFuture<org.folio.rest.tools.client.Response> resp = client.request( "/admin/health" , headers );
     resp.whenComplete( (response, error) -> {
-      if(error != null){
-        log.error(error.getCause());
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
-        return;
-      }
-      if(response.getCode() != 200){
-        log.error("Unable to connect to the inventory storage module at..." + storageURL);
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
-        return;
-      }
-      else{
-        process(false, entity, vertxContext, tenantId, asyncResultHandler, okapiHeaders);
+      try {
+        if(error != null){
+          log.error(error.getCause());
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
+          return;
+        }
+        if(response.getCode() != 200){
+          log.error("Unable to connect to the inventory storage module at..." + storageURL);
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
+          return;
+        }
+        else{
+          process(false, entity, vertxContext, tenantId, asyncResultHandler, okapiHeaders);
+        }
+      } finally {
+        if(client != null){
+          client.closeClient();
+        }
       }
     });
   }
@@ -246,44 +254,7 @@ public class LoaderAPI implements LoadResource {
         Iterator<ControlField> ctrlIter = cf.iterator();
         Iterator<DataField> dfIter = df.iterator();
         object = new Instance();
-        while (ctrlIter.hasNext()) {
-          //no subfields
-          ControlField controlField = ctrlIter.next();
-          //get entry for this control field in the rules.json file
-          JsonArray entriesForControlField = rulesFile.getJsonArray(controlField.getTag());
-          //when populating an object with multiple fields from the same marc field
-          //this is used to pass the reference of the previously created object to the buildObject function
-          Object rememberComplexObj[] = new Object[] { null };
-          boolean createNewComplexObj = true;
-          if (entriesForControlField != null) {
-            for (int i = 0; i < entriesForControlField.size(); i++) {
-              JsonObject entryForControlField = entriesForControlField.getJsonObject(i);
-              //get rules - each rule can contain multiple conditions that need to be met and a
-              //value to inject in case all the conditions are met
-              JsonArray rules = entryForControlField.getJsonArray("rules");
-              //the content of the control field
-              String data = controlField.getData();
-              data = processRules(data, rules, leader[0]);
-              if(data != null){
-                data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
-                if(data.length() == 0){
-                  continue;
-                }
-              }
-              //if conditionsMet = true, then all conditions of a specific rule were met
-              //and we can set the target to the rule's value
-              String target = entryForControlField.getString("target");
-              String embeddedFields[] = target.split("\\.");
-              if (!isMappingValid(object, embeddedFields)) {
-                log.debug("bad mapping " + rules.encode());
-                continue;
-              }
-              Object val = getValue(object, embeddedFields, data);
-              buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-              createNewComplexObj = false;
-            }
-          }
-        }
+        processMarcControlSection(ctrlIter, leader[0], object, rulesFile);
         while (dfIter.hasNext()) {
           // this is an iterator on the marc record, field by field
           boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
@@ -507,9 +478,6 @@ public class LoaderAPI implements LoadResource {
           log.error(e.getMessage(), e);
         }
       }
-      if(client != null){
-        client.closeClient();
-      }
     }
     }, false, whenDone -> {
       if(whenDone.succeeded()){
@@ -524,6 +492,48 @@ public class LoaderAPI implements LoadResource {
         return;
       }
     });
+  }
+
+  private void processMarcControlSection(Iterator<ControlField> ctrlIter, Leader leader, Object object, JsonObject rulesFile)
+    throws Exception {
+    //iterate over all the control fields in the marc record
+    //for each control field , check if there is a rule for mapping that field in the rule file
+    while (ctrlIter.hasNext()) {
+      ControlField controlField = ctrlIter.next();
+      //get entry for this control field in the rules.json file
+      JsonArray controlFieldRules = rulesFile.getJsonArray(controlField.getTag());
+      //when populating an object with multiple fields from the same marc field
+      //this is used to pass the reference of the previously created object to the buildObject function
+      Object rememberComplexObj[] = new Object[] { null };
+      boolean createNewComplexObj = true;
+      if (controlFieldRules != null) {
+        for (int i = 0; i < controlFieldRules.size(); i++) {
+          JsonObject cfRule = controlFieldRules.getJsonObject(i);
+          //get rules - each rule can contain multiple conditions that need to be met and a
+          //value to inject in case all the conditions are met
+          JsonArray rules = cfRule.getJsonArray("rules");
+          //the content of the Marc control field
+          String data = controlField.getData();
+          data = processRules(data, rules, leader);
+          if(data != null){
+            if(data.length() == 0){
+              continue;
+            }
+          }
+          //if conditionsMet = true, then all conditions of a specific rule were met
+          //and we can set the target to the rule's value
+          String target = cfRule.getString("target");
+          String embeddedFields[] = target.split("\\.");
+          if (!isMappingValid(object, embeddedFields)) {
+            log.debug("bad mapping " + rules.encode());
+            continue;
+          }
+          Object val = getValue(object, embeddedFields, data);
+          buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+          createNewComplexObj = false;
+        }
+      }
+    }
   }
 
   /**
@@ -617,18 +627,25 @@ public class LoaderAPI implements LoadResource {
     if(rules == null){
       return escape(data);
     }
-    //there are rules associated with this subfield to instance field mapping
+    //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
     for (int k = 0; k < rules.size(); k++) {
       //get the rules one by one
       JsonObject rule = rules.getJsonObject(k);
       //get the conditions associated with each rule
       JsonArray conditions = rule.getJsonArray("conditions");
-      //get the constant value to set the instance field to in case all
+      //get the constant value (if is was declared) to set the instance field to in case all
       //conditions are met for a rule, since there can be multiple rules
       //each with multiple conditions, a match of all conditions in a single rule
       //will set the instance's field to the const value. hence, it is an AND
       //between all conditions and an OR between all rules
+      //example of a constant value declaration in a rule:
+      //      "rules": [
+      //                {
+      //                  "conditions": [.....],
+      //                  "value": "book"
+      //if this value is not indicated, the value mapped to the instance field will be the
+      //output of the function - see below for more on that
       String ruleConstVal = rule.getString("value");
       boolean conditionsMet = true;
       //each rule has conditions, if they are all met, then mark
@@ -637,20 +654,39 @@ public class LoaderAPI implements LoadResource {
       boolean isCustom = false;
       for (int m = 0; m < conditions.size(); m++) {
         JsonObject condition = conditions.getJsonObject(m);
-        //1..n functions can be declared in a condition
+        //1..n functions can be declared within a condition (comma delimited).
+        //for example:
+        //  A condition with with one function, a paramter that will be passed to the
+        //  function, and the expected value for this condition to be met
+        //   {
+        //        "type": "char_select",
+        //        "parameter": "0",
+        //        "value": "7"
+        //   }
         //the functions here can rely on the single value field for comparison
         //to the output of all functions on the marc's field data
         //or, if a custom function is declared, the value will contain
         //the javascript of the custom function
+        //for example:
+        //          "type": "custom",
+        //          "value": "DATA.replace(',' , ' ');"
         String []function = condition.getString("type").split(",");
+        //we need to know if one of the functions is a custom function
+        //so that we know how to handle the value field - the custom indication
+        //may not be the first function listed in the function list
+        //a little wasteful, but this will probably only loop at most over 2 or 3 function names
         for (int n = 0; n < function.length; n++) {
           if("custom".equals(function[n].trim())){
             isCustom = true;
             break;
           }
         }
+
+        /*  start processing the condition  */
+
         if(leader != null && condition.getBoolean("LDR") != null){
           //the rule also has a condition on the leader field
+          //whose value also needs to be passed into any declared function
           data = leader.toString();
         }
         String valueParam = condition.getString("value");
@@ -700,6 +736,13 @@ public class LoaderAPI implements LoadResource {
     return escape(data);
   }
 
+  /**
+   * This function escapes data with two purposes in mind. The Marc data does not need to
+   * conform to json or postgres escaped characters - this function takes Marc data and
+   * escapes it so that it is valid in both a json and a postgres context
+   * @param data
+   * @return
+   */
   private String escape(String data){
     // remove \ char if it is the last char of the text
     if (data.endsWith("\\")) {
@@ -757,8 +800,15 @@ public class LoaderAPI implements LoadResource {
   private HttpResponse post(String url, StringBuffer data, Map<String, String> okapiHeaders)
       throws ClientProtocolException, IOException {
 
-    HttpClient httpclient = new DefaultHttpClient();
+    RequestConfig config = RequestConfig.custom()
+      .setConnectTimeout(2 * 1000)
+      .setConnectionRequestTimeout(5 * 1000)
+      .setSocketTimeout(2 * 1000).build();
+    CloseableHttpClient httpclient =
+      HttpClientBuilder.create().setDefaultRequestConfig(config).build();
+
     HttpPost httpPost = new HttpPost(url);
+
     StringEntity entity = new StringEntity(data.toString(), "UTF8");
     httpPost.setEntity(entity);
     httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
@@ -801,12 +851,21 @@ public class LoaderAPI implements LoadResource {
     return sb.toString();
   }
 
+  /**
+   *
+   * @param object - the root object to start parsing the 'path' from
+   * @param path - the target path - the field to place the value in
+   * @param newComp - should a new object be created , if not, use the object passed into the
+   * complexPreviouslyCreated parameter and continue populating it.
+   * @param val
+   * @param complexPreviouslyCreated - pass in a non primitive pojo that is already partially
+   * populated from previous subfield values
+   * @return
+   */
   public static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
       Object[] complexPreviouslyCreated) {
-    Object instance = object;
     Class<?> type = null;
     for (int j = 0; j < path.length; j++) {
-      // plain entry, not an object
       try {
         Field field = object.getClass().getDeclaredField(path[j]);
         type = field.getType();
@@ -814,7 +873,6 @@ public class LoaderAPI implements LoadResource {
             || type.isAssignableFrom(java.util.Set.class)) {
           Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
           Collection<Object> coll = ((Collection<Object>) method.invoke(object));
-          int size = coll.size();
           ParameterizedType listType = (ParameterizedType) field.getGenericType();
           Class<?> listTypeClass = (Class<?>) listType.getActualTypeArguments()[0];
           if (isPrimitiveOrPrimitiveWrapperOrString(listTypeClass)) {
@@ -837,10 +895,18 @@ public class LoaderAPI implements LoadResource {
         } else if (!isPrimitiveOrPrimitiveWrapperOrString(type)) {
           Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
           object = method.invoke(object);
-          if (object == null) {
-            object = object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]),
+          //currently not needed for instances, may be needed in the future
+          //non primitive member in instance object but represented as a list or set of non
+          //primitive objects
+          /*
+           * if (object != null) {
+            object = object.getMethod(columnNametoCamelCaseWithset(path[j]),
               type).invoke(object, type.newInstance());
-          }
+            }
+            else{
+
+            }
+          */
         } else {
           // primitive
           object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]),
@@ -914,10 +980,6 @@ public class LoaderAPI implements LoadResource {
           return true;
         }
       }
-      /*
-       * else { return false; }
-       */
-      // }
     }
     if (!isPrimitiveOrPrimitiveWrapperOrString(type)) {
       return false;
@@ -958,13 +1020,14 @@ public class LoaderAPI implements LoadResource {
 
   private static String removeEscapedChars(String path) {
     int len = path.length();
-    List<String> res = new ArrayList<>();
     StringBuilder token = new StringBuilder();
     boolean slash = false;
     boolean isEven = false;
 
     for (int j = 0; j < len; j++) {
       char t = path.charAt(j);
+      //this is our record delimiter '|', so for now as a quick fix,
+      //replace it with a blank
       if( t == '|'){
         t = ' ';
       }
@@ -996,5 +1059,75 @@ public class LoaderAPI implements LoadResource {
       }
     }
     return token.toString();
+  }
+
+
+  @Validate
+  @Override
+  public void postLoadStatic(String storageURL, InputStream entity,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+      Context vertxContext) throws Exception {
+
+    vertxContext.owner().executeBlocking( block -> {
+      try {
+        log.info("REQUEST ID " + UUID.randomUUID().toString());
+        String tenantId = TenantTool.calculateTenantId(
+          okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
+
+        String content = IoUtil.toStringUtf8(entity);
+        JsonObject jobj = new JsonObject(content);
+        String table = jobj.getString("type");
+        JsonObject values = jobj.getJsonObject("values");
+        JsonObject record = jobj.getJsonObject("record");
+        List<JsonObject> listOfRecords = new ArrayList<>();
+        values.forEach( entry -> {
+          String field = entry.getKey();
+          JsonArray vals =  (JsonArray)entry.getValue();
+          for (int i = 0; i < vals.size(); i++) {
+            JsonObject j = record.copy();
+            Object o = vals.getValue(i);
+            j.put(field, o);
+            listOfRecords.add(j);
+          }
+        });
+        StringBuffer importSQLStatement = new StringBuffer();
+        importSQLStatement.append("COPY " + tenantId
+        + "_mod_inventory_storage."+table+"(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';").append(
+          System.lineSeparator());
+        for (int i = 0; i < listOfRecords.size(); i++) {
+          String id = UUID.randomUUID().toString();
+          String persistRecord = listOfRecords.get(i).encode().replaceAll("\\$\\{randomUUID\\}", id);
+          importSQLStatement.append(id).append("|").append(persistRecord).append(
+            System.lineSeparator());
+        }
+        HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+        if (response.getStatusLine().getStatusCode() != 200) {
+          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+          log.error(e);
+        }
+        block.complete(listOfRecords);
+      } catch (IOException e) {
+        log.error(e.getMessage(), e);
+        block.fail(e);
+      }
+    }, true, whenDone -> {
+      if(whenDone.succeeded()){
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadStaticResponse.withCreated(whenDone.result().toString())));
+        log.info("Completed processing of REQUEST");
+        return;
+      }
+      else{
+        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+          PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
+      }
+    });
+  }
+
+  @Override
+  public void getLoadStatic(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+    // TODO Auto-generated method stub
+
   }
 }

@@ -1,0 +1,8 @@
+{
+  "value":
+  {
+    "id": "${randomUUID}",
+    "name": "${this.values}"
+  },
+  "values": ["Can circulate", "On loan" , "2-weeks" , "1-hour" , "Reading room"]
+}
