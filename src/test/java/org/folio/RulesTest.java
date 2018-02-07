@@ -1,6 +1,7 @@
 package org.folio;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Instance;
+import org.folio.rest.jaxrs.model.Mtype;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -157,6 +159,78 @@ public class RulesTest {
       }
     }
     System.out.println("all "+lines.size()+" lines matched...");
+  }
+
+  @Test
+  public void testStaticLoading() throws Exception {
+
+    String materialType = getFile("mapping/static/material_type");
+    List<String> lines = getFileAsList("materialTypeObjects");
+
+    CompletableFuture<TextResponse> materialTypeCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", materialType, text(materialTypeCF));
+    TextResponse t = materialTypeCF.get();
+    System.out.println("response for static material type data load is: " + t.getStatusCode());
+    assertEquals(201, t.getStatusCode());
+    List<String> body = getBodyAsList(t.body);
+    System.out.print("OUTPUT: " + t.getBody());
+    for(int i=0; i<lines.size(); i++){
+      Mtype mtype = jsonMapper.readValue(
+        body.get(i).substring(body.get(i).indexOf("|")+1), Mtype.class);
+      mtype.setId(null);
+      try {
+        System.out.print((i+1) + " ");
+        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(mtype));
+      } catch (Exception e) {
+        System.out.println("error at " + (i+1));
+        e.printStackTrace();
+      }
+    }
+  }
+
+  @Test
+  public void testStaticLoadingObjects() throws Exception {
+
+    String objectType = getFile("mapping/static/loan_type");
+    List<String> lines = getFileAsList("objectTemplateObjects");
+
+    CompletableFuture<TextResponse> objectTypeCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", objectType, text(objectTypeCF));
+    TextResponse t = objectTypeCF.get();
+    System.out.println("response for static object type data load is: " + t.getStatusCode());
+    System.out.print("OUTPUT: " + t.getBody());
+    assertEquals(201, t.getStatusCode());
+    List<String> body = getBodyAsList(t.body);
+    System.out.print("OUTPUT: " + t.getBody());
+    for(int i=0; i<body.size(); i++){
+      try {
+        System.out.print((i+1) + " ");
+        if(!body.get(i).contains(lines.get(i))){
+          System.out.println("error at " + (i+1));
+          System.out.println("when comparing " + body.get(i) + " and " + lines.get(i));
+          assertTrue(false);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    assertTrue(true);
+  }
+
+  @Test
+  public void testStaticLoadingBad() throws Exception {
+
+    String objectType = getFile("mapping/static/shelflocation");
+
+    CompletableFuture<TextResponse> badCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", objectType, text(badCF));
+    TextResponse t = badCF.get();
+    System.out.println("response for bad static data load is: " + t.getStatusCode());
+    System.out.print("OUTPUT: " + t.getBody());
+    assertEquals(400, t.getStatusCode());
   }
 
   private String getFile(String filename) throws IOException {

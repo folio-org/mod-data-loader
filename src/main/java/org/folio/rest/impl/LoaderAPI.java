@@ -67,13 +67,15 @@ import io.vertx.core.json.JsonObject;
 public class LoaderAPI implements LoadResource {
 
   private static final String IMPORT_URL = "/admin/importSQL";
-
-  private int bulkSize = 50000;
-
   private static final Logger log = LogManager.getLogger(LoaderAPI.class);
-
   // rules are not stored in db as this is a test loading module
   private static final Map<String, JsonObject> tenantRulesMap = new HashMap<>();
+
+  private static int CONNECT_TIMEOUT = 3 * 1000;
+  private static int CONNECTION_TIMEOUT = 120 * 1000; //keep connection open this long
+  private static int SO_TIMEOUT = 3 * 1000;
+
+  private int bulkSize = 50000;
 
   private int counter;
   private int processedCount;
@@ -800,8 +802,11 @@ public class LoaderAPI implements LoadResource {
 
     CloseableHttpClient httpclient = null;
     try {
-      RequestConfig config = RequestConfig.custom().setConnectTimeout(
-        3 * 1000).setConnectionRequestTimeout(120 * 1000).setSocketTimeout(3 * 1000).build();
+      RequestConfig config = RequestConfig.custom()
+          .setConnectTimeout(LoaderAPI.CONNECT_TIMEOUT)
+          .setConnectionRequestTimeout(LoaderAPI.CONNECTION_TIMEOUT)
+          .setSocketTimeout(LoaderAPI.SO_TIMEOUT)
+          .build();
       httpclient = HttpClientBuilder.create().setDefaultRequestConfig(
         config).build();
       HttpPost httpPost = new HttpPost(url);
@@ -1072,6 +1077,25 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
+    processStatic(false, entity, okapiHeaders, asyncResultHandler, vertxContext);
+  }
+
+  @Override
+  public void getLoadStatic(Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+      GetLoadStaticResponse.withPlainMethodNotAllowed("Not implemented")));
+  }
+
+  @Override
+  public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+
+    processStatic(true, entity, okapiHeaders, asyncResultHandler, vertxContext);
+  }
+
+  private void processStatic(boolean isTest, InputStream entity, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext){
     vertxContext.owner().executeBlocking( block -> {
       try {
         log.info("REQUEST ID " + UUID.randomUUID().toString());
@@ -1083,6 +1107,10 @@ public class LoaderAPI implements LoadResource {
         String table = jobj.getString("type");
         JsonObject values = jobj.getJsonObject("values");
         JsonObject record = jobj.getJsonObject("record");
+        if(record == null){
+          block.fail("record field in json template not defined");
+          return;
+        }
         List<JsonObject> listOfRecords = new ArrayList<>();
         values.forEach( entry -> {
           String field = entry.getKey();
@@ -1095,29 +1123,43 @@ public class LoaderAPI implements LoadResource {
           }
         });
         StringBuffer importSQLStatement = new StringBuffer();
-        importSQLStatement.append("COPY " + tenantId
-        + "_mod_inventory_storage."+table+"(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';").append(
-          System.lineSeparator());
+        if(!isTest){
+          importSQLStatement.append("COPY " + tenantId
+          + "_mod_inventory_storage."+table+"(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
+          .append(System.lineSeparator());
+        }
         for (int i = 0; i < listOfRecords.size(); i++) {
           String id = UUID.randomUUID().toString();
           String persistRecord = listOfRecords.get(i).encode().replaceAll("\\$\\{randomUUID\\}", id);
           importSQLStatement.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
         }
-        HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-        if (response.getStatusLine().getStatusCode() != 200) {
-          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
-          log.error(e);
+        if(!isTest){
+          if(table == null){
+            block.fail("table field in json template not defined");
+            return;
+          }
+          HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+          if (response.getStatusLine().getStatusCode() != 200) {
+            String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+            log.error(e);
+            block.fail(e);
+          }
         }
-        block.complete(listOfRecords);
-      } catch (IOException e) {
+        block.complete(importSQLStatement);
+      } catch (Exception e) {
         log.error(e.getMessage(), e);
         block.fail(e);
       }
     }, true, whenDone -> {
       if(whenDone.succeeded()){
+        if(!isTest){
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadStaticResponse.withCreated(whenDone.result().toString())));
+        }else{
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadStaticTestResponse.withPlainCreated(whenDone.result().toString())));
+        }
         log.info("Completed processing of REQUEST");
         return;
       }
@@ -1126,12 +1168,5 @@ public class LoaderAPI implements LoadResource {
           PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
       }
     });
-  }
-
-  @Override
-  public void getLoadStatic(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
-    // TODO Auto-generated method stub
-
   }
 }

@@ -1,8 +1,0 @@
-{
-  "value":
-  {
-    "id": "${randomUUID}",
-    "name": "${this.values}"
-  },
-  "values": ["Main Library", "Science Library" , "Liberal Arts Library" , "Law Library" , "Medical Library"]
-}

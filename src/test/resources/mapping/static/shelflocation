@@ -1,0 +1,9 @@
+{
+  "value":
+  {
+    "id": "${randomUUID}"
+  },
+  "values": {
+    "name": ["Main Library", "Science Library" , "Liberal Arts Library" , "Law Library" , "Medical Library"]
+  }
+}

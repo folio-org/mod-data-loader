@@ -1,0 +1,9 @@
+{
+  "record": {
+    "id": "${randomUUID}"
+  },
+  "values": {
+    "name": [{"objectTest":"Can circulate"}, {"objectTest":"Can circulate 2"}]
+  },
+  "type": "loan_type"
+}
