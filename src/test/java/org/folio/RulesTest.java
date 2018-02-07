@@ -220,9 +220,23 @@ public class RulesTest {
   }
 
   @Test
-  public void testStaticLoadingBad() throws Exception {
+  public void testStaticLoadingNoRecord() throws Exception {
 
     String objectType = getFile("mapping/static/shelflocation");
+
+    CompletableFuture<TextResponse> badCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", objectType, text(badCF));
+    TextResponse t = badCF.get();
+    System.out.println("response for bad static data load is: " + t.getStatusCode());
+    System.out.print("OUTPUT: " + t.getBody());
+    assertEquals(400, t.getStatusCode());
+  }
+
+  @Test
+  public void testStaticLoadingBadJson() throws Exception {
+
+    String objectType = getFile("mapping/static/badjson");
 
     CompletableFuture<TextResponse> badCF = new CompletableFuture<>();
 

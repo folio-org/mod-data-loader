@@ -73,7 +73,7 @@ public class LoaderAPI implements LoadResource {
 
   private static int CONNECT_TIMEOUT = 3 * 1000;
   private static int CONNECTION_TIMEOUT = 120 * 1000; //keep connection open this long
-  private static int SO_TIMEOUT = 3 * 1000;
+  private static int SO_TIMEOUT = 3 * 1000; //during data flow, if interrupted for 3sec, regard connection as stalled/broken.
 
   private int bulkSize = 50000;
 
@@ -1077,7 +1077,7 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
-    processStatic(false, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    processStatic(storageURL, false, entity, okapiHeaders, asyncResultHandler, vertxContext);
   }
 
   @Override
@@ -1091,10 +1091,10 @@ public class LoaderAPI implements LoadResource {
   public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
 
-    processStatic(true, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    processStatic(null, true, entity, okapiHeaders, asyncResultHandler, vertxContext);
   }
 
-  private void processStatic(boolean isTest, InputStream entity, Map<String, String> okapiHeaders,
+  private void processStatic(String url, boolean isTest, InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext){
     vertxContext.owner().executeBlocking( block -> {
       try {
@@ -1104,29 +1104,22 @@ public class LoaderAPI implements LoadResource {
 
         String content = IoUtil.toStringUtf8(entity);
         JsonObject jobj = new JsonObject(content);
-        String table = jobj.getString("type");
-        JsonObject values = jobj.getJsonObject("values");
-        JsonObject record = jobj.getJsonObject("record");
-        if(record == null){
-          block.fail("record field in json template not defined");
+
+        String error = validateStaticLoad(jobj, isTest);
+
+        if(error != null){
+          block.fail(error);
           return;
         }
-        List<JsonObject> listOfRecords = new ArrayList<>();
-        values.forEach( entry -> {
-          String field = entry.getKey();
-          JsonArray vals =  (JsonArray)entry.getValue();
-          for (int i = 0; i < vals.size(); i++) {
-            JsonObject j = record.copy();
-            Object o = vals.getValue(i);
-            j.put(field, o);
-            listOfRecords.add(j);
-          }
-        });
+
+        List<JsonObject> listOfRecords = content2list(jobj);
+
         StringBuffer importSQLStatement = new StringBuffer();
         if(!isTest){
-          importSQLStatement.append("COPY " + tenantId
-          + "_mod_inventory_storage."+table+"(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
-          .append(System.lineSeparator());
+          importSQLStatement.append("COPY " + tenantId)
+            .append("_mod_inventory_storage.").append(jobj.getString("type"))
+            .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
+            .append(System.lineSeparator());
         }
         for (int i = 0; i < listOfRecords.size(); i++) {
           String id = UUID.randomUUID().toString();
@@ -1134,11 +1127,8 @@ public class LoaderAPI implements LoadResource {
           importSQLStatement.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
         }
+        importSQLStatement.append("\\.");
         if(!isTest){
-          if(table == null){
-            block.fail("table field in json template not defined");
-            return;
-          }
           HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
           if (response.getStatusLine().getStatusCode() != 200) {
             String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
@@ -1168,5 +1158,39 @@ public class LoaderAPI implements LoadResource {
           PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
       }
     });
+  }
+
+  private String validateStaticLoad(JsonObject jobj, boolean isTest){
+    String table = jobj.getString("type");
+    JsonObject record = jobj.getJsonObject("record");
+    JsonObject values = jobj.getJsonObject("values");
+
+    if((table == null && !isTest)){
+      return "type field (table name) must be defined in input";
+    }
+    else if(record == null){
+      return "record field must be defined in input";
+    }
+    else if(values == null || values.size() == 0){
+      return "values field must be defined and contain content in input";
+    }
+    return null;
+  }
+
+  private List<JsonObject> content2list(JsonObject jobj){
+    JsonObject values = jobj.getJsonObject("values");
+    JsonObject record = jobj.getJsonObject("record");
+    List<JsonObject> listOfRecords = new ArrayList<>();
+    values.forEach( entry -> {
+      String field = entry.getKey();
+      JsonArray vals =  (JsonArray)entry.getValue();
+      for (int i = 0; i < vals.size(); i++) {
+        JsonObject j = record.copy();
+        Object o = vals.getValue(i);
+        j.put(field, o);
+        listOfRecords.add(j);
+      }
+    });
+    return listOfRecords;
   }
 }
