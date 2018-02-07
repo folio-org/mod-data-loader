@@ -438,13 +438,13 @@ public class LoaderAPI implements LoadResource {
             }
           }
         }
-        String error = managePushToDB(isTest, importSQLStatement, tenantId, object, false, okapiHeaders);
+        String error = managePushToDB(isTest, tenantId, object, false, okapiHeaders);
         if(error != null){
           block.fail(new Exception(error));
           return;
         }
       }
-      String error = managePushToDB(isTest, importSQLStatement, tenantId, null, true, okapiHeaders);
+      String error = managePushToDB(isTest, tenantId, null, true, okapiHeaders);
       if(error != null){
         block.fail(new Exception(error));
         return;
@@ -758,7 +758,7 @@ public class LoaderAPI implements LoadResource {
     return script.eval(bindings);
   }
 
-  private String managePushToDB(boolean isTest, StringBuffer importSQLStatement, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
+  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
     if(importSQLStatement.length() == 0 && record == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
