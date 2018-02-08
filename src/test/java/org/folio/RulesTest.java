@@ -126,6 +126,8 @@ public class RulesTest {
   @Test
   public void testLoading() throws Exception {
 
+    System.out.println(" Running.... testLoading()");
+
     String rules = getFile("rules.json");
     List<String> lines = getFileAsList("instanceObjects");
 
@@ -164,6 +166,8 @@ public class RulesTest {
   @Test
   public void testStaticLoading() throws Exception {
 
+    System.out.println(" Running.... testStaticLoading()");
+
     String materialType = getFile("mapping/static/material_type");
     List<String> lines = getFileAsList("materialTypeObjects");
 
@@ -192,7 +196,9 @@ public class RulesTest {
   @Test
   public void testStaticLoadingObjects() throws Exception {
 
-    String objectType = getFile("mapping/static/loan_type");
+    System.out.println(" Running.... testStaticLoadingObjects()");
+
+    String objectType = getFile("mapping/static/inject_object");
     List<String> lines = getFileAsList("objectTemplateObjects");
 
     CompletableFuture<TextResponse> objectTypeCF = new CompletableFuture<>();
@@ -214,6 +220,7 @@ public class RulesTest {
         }
       } catch (Exception e) {
         e.printStackTrace();
+        assertTrue(false);
       }
     }
     assertTrue(true);
@@ -222,7 +229,9 @@ public class RulesTest {
   @Test
   public void testStaticLoadingNoRecord() throws Exception {
 
-    String objectType = getFile("mapping/static/shelflocation");
+    System.out.println(" Running.... testStaticLoadingNoRecord()");
+
+    String objectType = getFile("mapping/static/no_record_entry");
 
     CompletableFuture<TextResponse> badCF = new CompletableFuture<>();
 
@@ -235,6 +244,8 @@ public class RulesTest {
 
   @Test
   public void testStaticLoadingBadJson() throws Exception {
+
+    System.out.println(" Running.... testStaticLoadingBadJson()");
 
     String objectType = getFile("mapping/static/badjson");
 

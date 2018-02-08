@@ -45,6 +45,7 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.validate.JsonValidator;
 import org.folio.util.IoUtil;
 import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.ControlField;
@@ -1103,6 +1104,7 @@ public class LoaderAPI implements LoadResource {
           okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
         String content = IoUtil.toStringUtf8(entity);
+
         JsonObject jobj = new JsonObject(content);
 
         String error = validateStaticLoad(jobj, isTest);
@@ -1112,7 +1114,20 @@ public class LoaderAPI implements LoadResource {
           return;
         }
 
-        List<JsonObject> listOfRecords = content2list(jobj);
+        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue("values").toString());
+
+        List<JsonObject> listOfRecords = null;
+
+        if(isArray){
+          listOfRecords = contentArray2list(jobj);
+        } else{
+          listOfRecords = contentObject2list(jobj);
+        }
+
+        if(listOfRecords.size() == 0){
+          block.fail("No records to process...");
+          return;
+        }
 
         StringBuffer importSQLStatement = new StringBuffer();
         if(!isTest){
@@ -1122,7 +1137,12 @@ public class LoaderAPI implements LoadResource {
             .append(System.lineSeparator());
         }
         for (int i = 0; i < listOfRecords.size(); i++) {
-          String id = UUID.randomUUID().toString();
+          //if an "id" exists in the template record, use that id
+          String id = listOfRecords.get(i).getString("id");
+          if(id == null || "${randomUUID}".equals(id)){
+            //if there is no pre-populated "id" then generate one
+            id = UUID.randomUUID().toString();
+          }
           String persistRecord = listOfRecords.get(i).encode().replaceAll("\\$\\{randomUUID\\}", id);
           importSQLStatement.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
@@ -1134,6 +1154,7 @@ public class LoaderAPI implements LoadResource {
             String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
             log.error(e);
             block.fail(e);
+            return;
           }
         }
         block.complete(importSQLStatement);
@@ -1150,20 +1171,20 @@ public class LoaderAPI implements LoadResource {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadStaticTestResponse.withPlainCreated(whenDone.result().toString())));
         }
-        log.info("Completed processing of REQUEST");
-        return;
       }
       else{
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
           PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
       }
+      log.info("Completed processing of REQUEST");
+      return;
     });
   }
 
   private String validateStaticLoad(JsonObject jobj, boolean isTest){
     String table = jobj.getString("type");
     JsonObject record = jobj.getJsonObject("record");
-    JsonObject values = jobj.getJsonObject("values");
+    Object values = jobj.getValue("values");
 
     if((table == null && !isTest)){
       return "type field (table name) must be defined in input";
@@ -1171,13 +1192,26 @@ public class LoaderAPI implements LoadResource {
     else if(record == null){
       return "record field must be defined in input";
     }
-    else if(values == null || values.size() == 0){
-      return "values field must be defined and contain content in input";
+    else if(values == null){
+      return "values field must be defined in input";
     }
     return null;
   }
 
-  private List<JsonObject> content2list(JsonObject jobj){
+  private List<JsonObject> contentArray2list(JsonObject jobj){
+    JsonArray values = jobj.getJsonArray("values");
+    JsonObject record = jobj.getJsonObject("record");
+    List<JsonObject> listOfRecords = new ArrayList<>();
+    for (int i = 0; i < values.size(); i++) {
+      JsonObject template = record.copy();
+      JsonObject toinject = values.getJsonObject(i);
+      template.mergeIn(toinject, true);
+      listOfRecords.add(template);
+    }
+    return listOfRecords;
+  }
+
+  private List<JsonObject> contentObject2list(JsonObject jobj){
     JsonObject values = jobj.getJsonObject("values");
     JsonObject record = jobj.getJsonObject("record");
     List<JsonObject> listOfRecords = new ArrayList<>();
