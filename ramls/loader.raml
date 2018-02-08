@@ -127,7 +127,7 @@ schemas:
     post:
       is: [secured]
       description: |
-          Uploads a file and saves it to the specified tenant's instance table
+          Uploads a file with 1..n static records and saves it to the specified tenant's table
       queryParameters:
         storageURL:
           displayName: StorageURL
@@ -165,7 +165,7 @@ schemas:
     /test:
       post:
         description: |
-            Uploads a file with 1..n static data. No data is saved to the database
+            Uploads a file with 1..n static records. No data is saved to the database
         body:
           application/octet-stream:
         responses:

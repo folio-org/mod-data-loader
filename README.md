@@ -12,11 +12,13 @@ RMB based module used to load test data
 RMB based data loader. Currently supports loading binary Marc records into the mod-inventory-storage instance table.
 
 ## APIs
-Exposes four APIs
+Exposes six APIs
 1. POST `/load/marc-rules` - uploads a [rules json](https://github.com/folio-org/test-data-loader/blob/master/ramls/rules.json) file to use when mapping marc fields to instance fields. The rules file is only stored in memory and will be associated with the tenant passed in the x-okapi-tenant header
 2.  GET `/load/marc-rules`
 3. POST `/load/marc-data?storageURL=http://localhost:8888` - posts the attached binary Marc file. This will convert the Marc records into instances and bulk load them into Postgres.
 4. POST `/load/marc-data/test` - normalizes the attached binary Marc file (should be small) and returns json instance object as the response to the API. Can be used to check mappings from Marc to instances. The file attached should be kept small so that there are no memory issues for the client (up to 500 entries)
+5. POST `/load/static?storageURL=http://localhost:8888` - posts static data (json template file) into the table specified in the template 
+6. POST `/load/static/test` - posts (but does not persist) static data, returning the actual records that would have been persisted in non-test mode
 
 The RAML can be found here:
 https://github.com/folio-org/test-data-loader/blob/master/ramls/loader.raml
@@ -349,3 +351,64 @@ Currently, if the database is down, or the tenant in the x-okapi-tenant does not
 A single call to the API with a binary Marc file with 50,000 records should take approximately 40 seconds. You can run multiple API calls concurrently with different files to speed up loading. A 4-core server should support at least 4 concurrent calls (approximately 200,000 records within a minute).
 
 Adding Javascript custom functions (while allowing maximum normalization flexibility) does slow down processing. Each call takes approximately 0.2 milliseconds, meaning, for example, attaching custom Javascript functions to 6 fields in a 50,000 record Marc file means 300,000 javascript calls at 0.2 milliseconds per call -> 60,000 milliseconds (60 seconds) overhead.
+
+
+### Static data
+
+The loader allows loading static data into a tenant's table by calling the `/load/static` API.
+
+For example:
+
+calling the `/load/static` API with the following attachment:
+```
+{
+  "record": {
+    "id": "${randomUUID}"
+  },
+  "values": {
+    "name": ["Book", "Journal" , "Video" , "Audio" , "Map"]
+  },
+  "type": "material_type"
+}
+```
+Will create five records and attempt to persist them into the `type` table:
+```
+{"id":"33f2d57a-3a56-45f2-8a06-1e53d7c558a3","name":"Book"}
+{"id":"af195d6d-da0e-4b6f-a0a0-ebd5163ecdba","name":"Journal"}
+{"id":"40fba3d9-68b2-4b97-9608-f72799ac00df","name":"Video"}
+{"id":"fb630301-44a0-4a36-ad3d-6f4c86e2a7b8","name":"Audio"}
+{"id":"58f1e02e-35a5-43cb-af4c-129478b3a3a9","name":"Map"}
+```
+
+ - The `${randomUUID}` indicates that the "id" field should be populated with a server generated UUID
+ - The "values" field indicates which field name / values to use when generating the records
+ 
+Example 2: (define an array with static ids)
+
+```
+{
+  "record": {
+    "a": "val1",
+    "b": "val2"
+  },
+  "values":
+    [
+      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd","name":"Book"},
+      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc","name":"Journal"},
+      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}      
+    ]
+  ,
+  "type": "material_type"
+}
+
+``` 
+
+Will create three records..
+```
+{"a":"val1","b":"val2","id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd","name":"Book"}
+{"a":"val1","b":"val2","id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc","name":"Journal"}
+{"a":"val1","b":"val2","id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}
+```
+
+*Note* that the only validation occurring is the validation done on the DB layer (duplicate keys, etc...)
+

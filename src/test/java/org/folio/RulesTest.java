@@ -258,6 +258,49 @@ public class RulesTest {
     assertEquals(400, t.getStatusCode());
   }
 
+  @Test
+  public void testStaticLoadingStaticId() throws Exception {
+
+    System.out.println(" Running.... testStaticLoadingStaticId()");
+
+    String objectType = getFile("mapping/static/idexists");
+
+    CompletableFuture<TextResponse> objectTypeCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", objectType, text(objectTypeCF));
+    TextResponse t = objectTypeCF.get();
+    System.out.println("response for static object type data load is: " + t.getStatusCode());
+    System.out.print("OUTPUT: " + t.getBody());
+    assertEquals(201, t.getStatusCode());
+    List<String> body = getBodyAsList(t.body);
+    if(!body.get(0).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd")){
+      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd",false);
+    }
+    if(!body.get(1).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc")){
+      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc",false);
+    }
+    if(!body.get(2).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb")){
+      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb",false);
+    }
+    assertTrue(true);
+  }
+
+  @Test
+  public void testStaticLoadingNoValues() throws Exception {
+
+    System.out.println(" Running.... testStaticLoadingNoValues()");
+
+    String objectType = getFile("mapping/static/zero_values_array");
+
+    CompletableFuture<TextResponse> objectTypeCF = new CompletableFuture<>();
+
+    postData("http://localhost:" + port + "/load/static/test", objectType, text(objectTypeCF));
+    TextResponse t = objectTypeCF.get();
+    System.out.println("response for static object type data load is: " + t.getStatusCode());
+    System.out.print("OUTPUT: " + t.getBody());
+    assertEquals(400, t.getStatusCode());
+  }
+
   private String getFile(String filename) throws IOException {
     return IOUtils.toString(getClass().getClassLoader().getResourceAsStream(filename), "UTF-8");
   }
