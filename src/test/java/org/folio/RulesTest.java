@@ -164,6 +164,23 @@ public class RulesTest {
   }
 
   @Test
+  public void testLoadingNoTenant() throws Exception {
+
+    System.out.println(" Running.... testLoadingNoTenant()");
+
+    List<String> lines = getFileAsList("instanceObjects");
+
+    CompletableFuture<TextResponse> loadDataCf = new CompletableFuture<>();
+
+    String data = getFile("msplit00000000.mrc");
+
+    postData("http://localhost:" + port + "/load/marc-data/test", data, false, text(loadDataCf));
+    TextResponse t = loadDataCf.get();
+    System.out.println("response for loading marc-data is: " + t.getStatusCode());
+    assertEquals(400, t.getStatusCode());
+  }
+
+  @Test
   public void testStaticLoading() throws Exception {
 
     System.out.println(" Running.... testStaticLoading()");
@@ -314,10 +331,16 @@ public class RulesTest {
   }
 
   private void postData(String url, String content, Handler<HttpClientResponse> responseHandler){
+    postData(url, content, true, responseHandler);
+  }
+
+  private void postData(String url, String content, boolean withTenant, Handler<HttpClientResponse> responseHandler){
     HttpClientRequest request = client.postAbs(url, responseHandler);
     request.headers().add("Accept","application/json, text/plain");
     request.headers().add("Content-type","application/octet-stream");
-    request.headers().add("x-okapi-tenant","ABC");
+    if(withTenant){
+      request.headers().add("x-okapi-tenant","ABC");
+    }
     request.end(content);
   }
 

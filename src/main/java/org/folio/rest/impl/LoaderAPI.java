@@ -227,12 +227,6 @@ public class LoaderAPI implements LoadResource {
 
     JsonObject rulesFile = tenantRulesMap.get(tenantId);
 
-    if(rulesFile == null){
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostLoadMarcDataResponse.withPlainBadRequest("no rules file found for tenant " + tenantId)));
-      return;
-    }
-
     vertxContext.owner().executeBlocking( block -> {
       log.info("REQUEST ID " + UUID.randomUUID().toString());
       try {
@@ -452,7 +446,6 @@ public class LoaderAPI implements LoadResource {
         block.fail(new Exception(error));
         return;
       }
-      System.out.println(processedCount);
       long end = System.currentTimeMillis();
       log.info("inserted " + processedCount + " in " + (end - start)/1000 + " seconds" );
       block.complete("Received count: " + processedCount + "\nerrors: " + unprocessed.toString());
