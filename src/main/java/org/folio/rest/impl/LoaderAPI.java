@@ -16,13 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import javax.script.Bindings;
-import javax.script.Compilable;
-import javax.script.CompiledScript;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import javax.script.SimpleBindings;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
@@ -37,6 +31,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.tools.ClientGenerator;
@@ -45,6 +40,7 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.utils.Escaper;
 import org.folio.rest.validate.JsonValidator;
 import org.folio.util.IoUtil;
 import org.marc4j.MarcStreamReader;
@@ -83,8 +79,6 @@ public class LoaderAPI implements LoadResource {
   private HttpClientInterface client;
   private String url;
   private StringBuffer importSQLStatement = new StringBuffer();
-  private ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
-  private Map<Integer, CompiledScript> preCompiledJS = new HashMap<>();
 
   @Override
   public void postLoadMarcRules(InputStream entity, Map<String, String> okapiHeaders,
@@ -128,7 +122,6 @@ public class LoaderAPI implements LoadResource {
     stream.setData(tenantRulesMap.get(tenantId));
     asyncResultHandler.handle(
       io.vertx.core.Future.succeededFuture(GetLoadMarcRulesResponse.withJsonOK(stream)));
-
   }
 
   @Override
@@ -198,7 +191,6 @@ public class LoaderAPI implements LoadResource {
     });
   }
 
-
   private boolean validRequest(Handler<AsyncResult<Response>> asyncResultHandler, Map<String, String> okapiHeaders){
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
@@ -264,8 +256,7 @@ public class LoaderAPI implements LoadResource {
               //there could be multiple mapping entries, specifically different mappings
               //per subfield in the marc field
               JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
-              //a single mapping entry can also map multiple subfields to a specific field in
-              //the instance
+              //a single mapping entry can also map multiple subfields to a specific field in the instance
               JsonArray instanceField = subFieldMapping.getJsonArray("entity");
               //entity field indicates that the subfields within the entity definition should be
               //a single object, anything outside the entity definition will be placed in another
@@ -284,7 +275,7 @@ public class LoaderAPI implements LoadResource {
               else{
                 entityRequestedPerRepeatedSubfield = true;
               }
-              //if no "entity" is defined , then the contents of the field getting mapped to the same type
+              //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
               //will be placed in a single object of that type.
               if(instanceField == null){
                 instanceField = new JsonArray();
@@ -527,7 +518,7 @@ public class LoaderAPI implements LoadResource {
   }
 
   /**
-   * create the need part of the instance object based on the target and the string buffers containing the
+   * create the need part of the instance object based on the target and the string containing the
    * content per subfield sets
    * @param embeddedFields - the targer
    * @param object - the instance object
@@ -585,7 +576,7 @@ public class LoaderAPI implements LoadResource {
    * @param splitConf
    * @throws ScriptException
    */
-  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
+  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws Exception {
     List<Subfield> expandedSubs = new ArrayList<>();
     String func = splitConf.getString("type");
     boolean isCustom = false;
@@ -598,7 +589,12 @@ public class LoaderAPI implements LoadResource {
       String data = subs.get(k).getData();
       Iterator<?> splitData = null;
       if(isCustom){
-        splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)runJScript(param, data)).values().iterator();
+        try {
+          splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)JSManager.runJScript(param, data)).values().iterator();
+        } catch (Exception e) {
+          log.error("Expanding a field via subFieldSplit must return an array of results. ");
+          throw e;
+        }
       }
       else{
         splitData = NormalizationFunctions.runSplitFunction(func, data, param);
@@ -615,7 +611,7 @@ public class LoaderAPI implements LoadResource {
 
   private String processRules(String data, JsonArray rules, Leader leader){
     if(rules == null){
-      return escape(data);
+      return Escaper.escape(data);
     }
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
@@ -683,7 +679,7 @@ public class LoaderAPI implements LoadResource {
         for (int l = 0; l < function.length; l++) {
           if("custom".equals(function[l].trim())){
             try{
-              data = (String)runJScript(valueParam, data);
+              data = (String)JSManager.runJScript(valueParam, data);
             }
             catch(Exception e){
               //the function has thrown an exception meaning this condition has failed,
@@ -722,36 +718,7 @@ public class LoaderAPI implements LoadResource {
         break;
       }
     }
-
-    return escape(data);
-  }
-
-  /**
-   * This function escapes data with two purposes in mind. The Marc data does not need to
-   * conform to json or postgres escaped characters - this function takes Marc data and
-   * escapes it so that it is valid in both a json and a postgres context
-   * @param data
-   * @return
-   */
-  private String escape(String data){
-    // remove \ char if it is the last char of the text
-    if (data.endsWith("\\")) {
-      data = data.substring(0, data.length() - 1);
-    }
-    data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
-    return data;
-  }
-
-  private Object runJScript(String jscript, String data) throws ScriptException {
-    CompiledScript script = preCompiledJS.get(jscript.hashCode());
-    if(script == null){
-      log.debug("compiling JS function: " + jscript);
-      script = ((Compilable) engine).compile(jscript);
-      preCompiledJS.put(jscript.hashCode(), script);
-    }
-    Bindings bindings = new SimpleBindings();
-    bindings.put("DATA", data);
-    return script.eval(bindings);
+    return Escaper.escape(data);
   }
 
   private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
@@ -816,42 +783,12 @@ public class LoaderAPI implements LoadResource {
       httpPost.setHeader("Accept", "text/plain");
       // Execute the request
       HttpResponse response = httpclient.execute(httpPost);
-      // Examine the response status
-      entity = null;
       return response;
     } finally {
       if(httpclient != null){
         httpclient.close();
       }
     }
-  }
-
-  public static String rebuildPath(Object object, String[] path, int loc) {
-    StringBuffer sb = new StringBuffer();
-    Class<?> type = null;
-    for (int j = 0; j < path.length; j++) {
-      // plain entry, not an object
-      try {
-        Field field = object.getClass().getDeclaredField(path[j]);
-        type = field.getType();
-
-        if (type.isAssignableFrom(java.util.List.class)
-            || type.isAssignableFrom(java.util.Set.class)) {
-          ParameterizedType listType = (ParameterizedType) field.getGenericType();
-          Class<?> listTypeClass = (Class<?>) listType.getActualTypeArguments()[0];
-          object = listTypeClass.newInstance();
-          sb.append(path[j]).append("[").append(loc).append("]");
-        } else {
-          sb.append(path[j]);
-        }
-        if (!(j == path.length - 1)) {
-          sb.append(".");
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-    return sb.toString();
   }
 
   /**
@@ -926,7 +863,6 @@ public class LoaderAPI implements LoadResource {
   public static Object getValue(Object object, String[] path, String value) {
     Class<?> type = null;
     for (int j = 0; j < path.length; j++) {
-      // plain entry, not an object
       try {
         Field field = object.getClass().getDeclaredField(path[j]);
         type = field.getType();
@@ -1020,50 +956,6 @@ public class LoaderAPI implements LoadResource {
     }
     return "get" + sb.toString();
   }
-
-  private static String removeEscapedChars(String path) {
-    int len = path.length();
-    StringBuilder token = new StringBuilder();
-    boolean slash = false;
-    boolean isEven = false;
-
-    for (int j = 0; j < len; j++) {
-      char t = path.charAt(j);
-      //this is our record delimiter '|', so for now as a quick fix,
-      //replace it with a blank
-      if( t == '|'){
-        t = ' ';
-      }
-      if (slash && isEven && t == '\\') {
-        // we've seen \\ and now a third \ in a row
-        isEven = false;
-        slash = true;
-        token.append(t);
-      } else if (slash && !isEven && t == '\\') {
-        // we have seen an odd number of \ and now we see another one, meaning \\ in the string
-        slash = true;
-        isEven = true;
-        token.append(t);
-      } else if (slash && !isEven && t != '\\') {
-        // we've hit a non \ after a single \, this needs to get encoded to be \\
-        token.append('\\').append(t);
-        isEven = false;
-        slash = false;
-      } else if (!slash && t == '\\') {
-        // we've hit a \
-        token.append(t);
-        isEven = false;
-        slash = true;
-      } else {
-        // even number of slashes following by a non slash, or just a non slash
-        token.append(t);
-        isEven = false;
-        slash = false;
-      }
-    }
-    return token.toString();
-  }
-
 
   @Validate
   @Override

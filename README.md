@@ -85,7 +85,7 @@ Example:
  ]
 ```
 Note that you can indicate the use of multiple functions using the comma delimiter. This is only possible for functions that do not receive parameters
-- `custom` - define a custom JavaScript function to run on the field's data (passed in as DATA to the JavaScript function as a binded variable)
+- `custom` - define a custom JavaScript function to run on the field's data (passed in as DATA to the JavaScript function as a binded variable. Must return a String value)
 Ex.
 ```
 "target": "publication.dateOfPublication",

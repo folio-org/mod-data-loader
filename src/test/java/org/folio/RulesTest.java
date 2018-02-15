@@ -226,7 +226,6 @@ public class RulesTest {
     System.out.print("OUTPUT: " + t.getBody());
     assertEquals(201, t.getStatusCode());
     List<String> body = getBodyAsList(t.body);
-    System.out.print("OUTPUT: " + t.getBody());
     for(int i=0; i<body.size(); i++){
       try {
         System.out.print((i+1) + " ");
