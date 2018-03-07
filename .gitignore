@@ -10,3 +10,6 @@ nbproject/
 .project
 .settings/
 .classpath
+#intellij
+.idea/
+*.iml
