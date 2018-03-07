@@ -66,20 +66,19 @@ public class LoaderAPI implements LoadResource {
 
   private static final String IMPORT_URL = "/admin/importSQL";
   private static final Logger log = LogManager.getLogger(LoaderAPI.class);
+
   // rules are not stored in db as this is a test loading module
   private static final Map<String, JsonObject> tenantRulesMap = new HashMap<>();
 
-  private static int CONNECT_TIMEOUT = 3 * 1000;
-  private static int CONNECTION_TIMEOUT = 120 * 1000; //keep connection open this long
-  private static int SO_TIMEOUT = 3 * 1000; //during data flow, if interrupted for 3sec, regard connection as stalled/broken.
-
+  private static int connectTimeout = 3 * 1000;
+  private static int connectionTimeout = 120 * 1000; //keep connection open this long
+  private static int soTimeout = 3 * 1000; //during data flow, if interrupted for 3sec, regard connection as stalled/broken.
   private int bulkSize = 50000;
-
   private int counter;
   private int processedCount;
   private HttpClientInterface client;
   private String url;
-  private StringBuffer importSQLStatement = new StringBuffer();
+  private StringBuilder importSQLStatement = new StringBuilder();
 
   @Override
   public void postLoadMarcRules(InputStream entity, Map<String, String> okapiHeaders,
@@ -119,10 +118,10 @@ public class LoaderAPI implements LoadResource {
         PostLoadMarcRulesResponse.withPlainBadRequest("tenant not set")));
       return;
     }
+
     OutStream stream = new OutStream();
     stream.setData(tenantRulesMap.get(tenantId));
-    asyncResultHandler.handle(
-      io.vertx.core.Future.succeededFuture(GetLoadMarcRulesResponse.withJsonOK(stream)));
+    asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetLoadMarcRulesResponse.withJsonOK(stream)));
   }
 
   @Override
@@ -223,7 +222,7 @@ public class LoaderAPI implements LoadResource {
       log.info("REQUEST ID " + UUID.randomUUID().toString());
       try {
         final MarcStreamReader reader = new MarcStreamReader(entity);
-        StringBuffer unprocessed = new StringBuffer();
+        StringBuilder unprocessed = new StringBuilder();
         Object object = new Instance();
 
         while (reader.hasNext()) {
@@ -767,15 +766,15 @@ public class LoaderAPI implements LoadResource {
     return null;
   }
 
-  private HttpResponse post(String url, StringBuffer data, Map<String, String> okapiHeaders)
+  private HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders)
       throws ClientProtocolException, IOException {
 
     CloseableHttpClient httpclient = null;
     try {
       RequestConfig config = RequestConfig.custom()
-          .setConnectTimeout(LoaderAPI.CONNECT_TIMEOUT)
-          .setConnectionRequestTimeout(LoaderAPI.CONNECTION_TIMEOUT)
-          .setSocketTimeout(LoaderAPI.SO_TIMEOUT)
+          .setConnectTimeout(LoaderAPI.connectTimeout)
+          .setConnectionRequestTimeout(LoaderAPI.connectionTimeout)
+          .setSocketTimeout(LoaderAPI.soTimeout)
           .build();
       httpclient = HttpClientBuilder.create().setDefaultRequestConfig(
         config).build();
@@ -1023,7 +1022,7 @@ public class LoaderAPI implements LoadResource {
           return;
         }
 
-        StringBuffer importSQLStatement = new StringBuffer();
+        StringBuilder importSQLStatement = new StringBuilder();
         if(!isTest){
           importSQLStatement.append("COPY " + tenantId)
             .append("_mod_inventory_storage.").append(jobj.getString("type"))
