@@ -223,7 +223,6 @@ public class LoaderAPI implements LoadResource {
       try {
         final MarcStreamReader reader = new MarcStreamReader(entity);
         StringBuilder unprocessed = new StringBuilder();
-        Object object = new Instance();
 
         while (reader.hasNext()) {
           processedCount++;
@@ -240,7 +239,7 @@ public class LoaderAPI implements LoadResource {
             log.error(e.getMessage(), e);
             continue;
           }
-          processSingleEntry(df, cf, object, rulesFile, leader[0], isTest, tenantId, okapiHeaders, block);
+          processSingleEntry(df, cf, rulesFile, leader[0], isTest, tenantId, okapiHeaders, block);
         }
 
         String error = managePushToDB(isTest, tenantId, null, true, okapiHeaders);
@@ -286,13 +285,13 @@ public class LoaderAPI implements LoadResource {
     });
   }
 
-  private void processSingleEntry(List<DataField> df, List<ControlField> cf, Object object, JsonObject rulesFile,
+  private void processSingleEntry(List<DataField> df, List<ControlField> cf, JsonObject rulesFile,
                                   Leader leader, boolean isTest, String tenantId,
                                   Map<String, String> okapiHeaders, Future<Object> block) throws Exception {
 
     Iterator<ControlField> ctrlIter = cf.iterator();
     Iterator<DataField> dfIter = df.iterator();
-    object = new Instance();
+    Object object = new Instance();
     processMarcControlSection(ctrlIter, leader, object, rulesFile);
     while (dfIter.hasNext()) {
       // this is an iterator on the marc record, field by field
