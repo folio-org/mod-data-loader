@@ -71,8 +71,9 @@ public class LoaderAPI implements LoadResource {
   private static final Map<String, JsonObject> tenantRulesMap = new HashMap<>();
 
   private static int connectTimeout = 3 * 1000;
-  private static int connectionTimeout = 120 * 1000; //keep connection open this long
-  private static int soTimeout = 3 * 1000; //during data flow, if interrupted for 3sec, regard connection as stalled/broken.
+  private static int connectionTimeout = 300 * 1000; //keep connection open this long
+  private static int soTimeout = 180 * 1000; //during data flow, if interrupted for 3sec, regard connection as
+  // stalled/broken.
   private int bulkSize = 50000;
   private int counter;
   private int processedCount;
