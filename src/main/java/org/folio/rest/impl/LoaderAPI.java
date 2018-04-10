@@ -37,6 +37,7 @@ import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperO
 public class LoaderAPI implements LoadResource {
 
   private static final Logger LOGGER = LogManager.getLogger(LoaderAPI.class);
+  private static final String TENANT_ID_NULL = TenantTool.calculateTenantId(null);
 
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
@@ -52,7 +53,7 @@ public class LoaderAPI implements LoadResource {
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
-    if (tenantId == null) {
+    if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostLoadMarcRulesResponse.withPlainBadRequest("tenant not set")));
       return;
@@ -78,7 +79,7 @@ public class LoaderAPI implements LoadResource {
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
-    if (tenantId == null) {
+    if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostLoadMarcRulesResponse.withPlainBadRequest("tenant not set")));
       return;
@@ -160,7 +161,7 @@ public class LoaderAPI implements LoadResource {
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
-    if (tenantId == null) {
+    if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
         PostLoadMarcDataResponse.withPlainBadRequest("tenant not set")));
       return false;
