@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.Collection;
@@ -189,7 +190,7 @@ public class LoaderAPI implements LoadResource {
    * populated from previous subfield values
    * @return
    */
-  public static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
+  static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
       Object[] complexPreviouslyCreated) {
     Class<?> type;
     for (int j = 0; j < path.length; j++)
@@ -199,7 +200,9 @@ public class LoaderAPI implements LoadResource {
         if (type.isAssignableFrom(List.class)
           || type.isAssignableFrom(java.util.Set.class)) {
           Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
-          Collection<Object> coll = ((Collection<Object>) method.invoke(object));
+
+          Collection<Object> coll = setColl(method, object);
+
           ParameterizedType listType = (ParameterizedType) field.getGenericType();
           Class<?> listTypeClass = (Class<?>) listType.getActualTypeArguments()[0];
           if (isPrimitiveOrPrimitiveWrapperOrString(listTypeClass)) {
@@ -215,7 +218,7 @@ public class LoaderAPI implements LoadResource {
               complexPreviouslyCreated[0] = o;
             } else if (complexPreviouslyCreated[0] != null) {
               if (complexPreviouslyCreated[0].getClass().isAssignableFrom(listTypeClass)) {
-                object = complexPreviouslyCreated[0]; // .getClass().getMethod(columnNametoCamelCaseWithset(path[j]) , type);
+                object = complexPreviouslyCreated[0];
               }
             }
           }
@@ -225,15 +228,6 @@ public class LoaderAPI implements LoadResource {
           //currently not needed for instances, may be needed in the future
           //non primitive member in instance object but represented as a list or set of non
           //primitive objects
-          /*
-           * if (object != null) {
-            object = object.getMethod(columnNametoCamelCaseWithset(path[j]),
-              type).invoke(object, type.newInstance());
-            }
-            else{
-
-            }
-          */
         } else {
           // primitive
           object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]),
@@ -243,7 +237,12 @@ public class LoaderAPI implements LoadResource {
         LOGGER.error(e.getMessage(), e);
         return false;
       }
-    return true;// sb.toString();
+    return true;
+  }
+
+  private static Collection<Object> setColl(Method method, Object object) throws InvocationTargetException,
+    IllegalAccessException {
+    return ((Collection<Object>) method.invoke(object));
   }
 
   public static Object getValue(Object object, String[] path, String value) {
