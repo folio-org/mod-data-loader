@@ -5,6 +5,8 @@ import java.lang.reflect.ParameterizedType;
 
 public class LoaderHelper {
 
+  private LoaderHelper() {}
+
   public static boolean isMappingValid(Object object, String[] path)
     throws InstantiationException, IllegalAccessException {
     Class<?> type = null;
