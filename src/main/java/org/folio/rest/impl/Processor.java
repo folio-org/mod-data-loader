@@ -190,7 +190,7 @@ class Processor {
               //some with delimiter y, and include a separator to separate each set of subfields
               //maintain a delimiter per subfield map - to lookup the correct delimiter and place it in string
               //maintain a string buffer per subfield - but with the string buffer being a reference to the
-              //same stringbuffer for subfields with the same delimiter - the stringbuffer references are
+              //same stringbuilder for subfields with the same delimiter - the stringbuilder references are
               //maintained in the buffers2concat list which is then iterated over and we place a separator
               //between the content of each string buffer reference's content
               JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
@@ -203,13 +203,13 @@ class Processor {
               if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
                 applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
               }
-              //map a subfield to a stringbuffer which will hold its content
-              //since subfields can be concatenated into the same stringbuffer
-              //the map of different subfields can map to the same stringbuffer reference
-              final Map<String, StringBuffer> subField2Data = new HashMap<>();
-              //keeps a reference to the stringbuffers that contain the data of the
+              //map a subfield to a stringbuilder which will hold its content
+              //since subfields can be concatenated into the same stringbuilder
+              //the map of different subfields can map to the same stringbuilder reference
+              final Map<String, StringBuilder> subField2Data = new HashMap<>();
+              //keeps a reference to the stringbuilders that contain the data of the
               //subfield sets. this list is then iterated over and used to delimit subfield sets
-              final List<StringBuffer> buffers2concat = new ArrayList<>();
+              final List<StringBuilder> buffers2concat = new ArrayList<>();
               //separator between subfields with different delimiters
               String separator[] = new String[]{ null };
               if(delimiters != null){
@@ -217,19 +217,19 @@ class Processor {
                   JsonObject job = delimiters.getJsonObject(j);
                   String delimiter = job.getString("value");
                   JsonArray subFieldswithDel = job.getJsonArray("subfields");
-                  StringBuffer subFieldsStringBuffer = new StringBuffer();
-                  buffers2concat.add(subFieldsStringBuffer);
+                  StringBuilder subFieldsStringBuilder = new StringBuilder();
+                  buffers2concat.add(subFieldsStringBuilder);
                   if(subFieldswithDel.size() == 0){
                     separator[0] = delimiter;
                   }
                   for (int k = 0; k < subFieldswithDel.size(); k++) {
                     subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
-                    subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuffer);
+                    subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuilder);
                   }
                 }
               }
               else{
-                buffers2concat.add(new StringBuffer());
+                buffers2concat.add(new StringBuilder());
               }
               String embeddedFields[] = jObj.getString("target").split("\\.");
               if (!isMappingValid(object, embeddedFields)) {
@@ -275,7 +275,7 @@ class Processor {
                     subField2Data.get(subfield).append(data);
                   }
                   else{
-                    StringBuffer sb = buffers2concat.get(0);
+                    StringBuilder sb = buffers2concat.get(0);
                     if(entityRequestedPerRepeatedSubfield){
                       //create a new value no matter what , since this use case
                       //indicates that repeated and non-repeated subfields will create a new entity
@@ -554,11 +554,11 @@ class Processor {
    * @param separator - separator between sets of subfields
    * @return
    */
-  private String generateDataString(List<StringBuffer> buffers2concat, String separator){
-    StringBuffer finalData = new StringBuffer();
+  private String generateDataString(List<StringBuilder> buffers2concat, String separator){
+    StringBuilder finalData = new StringBuilder();
     int size = buffers2concat.size();
     for(int x=0; x<size; x++){
-      StringBuffer sb = buffers2concat.get(x);
+      StringBuilder sb = buffers2concat.get(x);
       if(sb.length() > 0){
         if(finalData.length() > 0){
           finalData.append(separator);
