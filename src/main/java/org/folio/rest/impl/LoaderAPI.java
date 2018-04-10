@@ -32,7 +32,7 @@ import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperO
 
 /**
  * @author shale
- *
+ * @author acls (editor)
  */
 public class LoaderAPI implements LoadResource {
 

@@ -38,6 +38,10 @@ import java.util.*;
 
 import static org.folio.rest.service.LoaderHelper.isMappingValid;
 
+/**
+ * @author shale
+ * @author acls (editor)
+ */
 class Processor {
 
   private static final Logger LOGGER = LogManager.getLogger(Processor.class);
