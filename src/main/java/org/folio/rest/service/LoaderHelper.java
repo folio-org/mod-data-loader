@@ -30,10 +30,7 @@ public class LoaderHelper {
         }
       }
     }
-    if (!isPrimitiveOrPrimitiveWrapperOrString(type)) {
-      return false;
-    }
-    return true;
+    return isPrimitiveOrPrimitiveWrapperOrString(type);
   }
 
   public static boolean isPrimitiveOrPrimitiveWrapperOrString(Class<?> type) {
