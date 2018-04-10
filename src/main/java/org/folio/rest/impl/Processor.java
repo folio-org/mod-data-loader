@@ -591,7 +591,7 @@ class Processor {
     int size = subs.size();
     for (int k = 0; k < size; k++) {
       String data = subs.get(k).getData();
-      Iterator<?> splitData = null;
+      Iterator<?> splitData;
       if(isCustom){
         try {
           splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)JSManager.runJScript(param, data)).values().iterator();
@@ -667,7 +667,7 @@ class Processor {
 
         boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue("values").toString());
 
-        List<JsonObject> listOfRecords = null;
+        List<JsonObject> listOfRecords;
 
         if(isArray){
           listOfRecords = contentArray2list(jobj);

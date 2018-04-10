@@ -9,7 +9,7 @@ public class LoaderHelper {
     throws InstantiationException, IllegalAccessException {
     Class<?> type = null;
     for (int i = 0; i < path.length; i++) {
-      Field field = null;
+      Field field;
       try {
         field = object.getClass().getDeclaredField(path[i]);
       } catch (NoSuchFieldException e) {

@@ -190,7 +190,7 @@ public class LoaderAPI implements LoadResource {
    */
   public static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
       Object[] complexPreviouslyCreated) {
-    Class<?> type = null;
+    Class<?> type;
     for (int j = 0; j < path.length; j++)
       try {
         Field field = object.getClass().getDeclaredField(path[j]);
@@ -265,7 +265,7 @@ public class LoaderAPI implements LoadResource {
   }
 
   private static Object getValue(Class<?> type, String value) {
-    Object val = null;
+    Object val;
     if (type.isAssignableFrom(String.class)) {
       val = value;
     } else if (type.isAssignableFrom(Boolean.class)) {
