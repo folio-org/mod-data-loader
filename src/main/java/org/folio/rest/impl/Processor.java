@@ -590,9 +590,8 @@ class Processor {
       isCustom = true;
     }
     String param = splitConf.getString("value");
-    int size = subs.size();
-    for (int k = 0; k < size; k++) {
-      String data = subs.get(k).getData();
+    for (Subfield sub : subs) {
+      String data = sub.getData();
       Iterator<?> splitData;
       if(isCustom){
         try {
@@ -607,12 +606,12 @@ class Processor {
       }
       while (splitData.hasNext()) {
         String newData = (String)splitData.next();
-        Subfield sub = new SubfieldImpl(subs.get(k).getCode(), newData);
-        expandedSubs.add(sub);
+        Subfield expandedSub = new SubfieldImpl(sub.getCode(), newData);
+        expandedSubs.add(expandedSub);
       }
     }
     subs.clear();
-    subs.addAll( expandedSubs );
+    subs.addAll(expandedSubs);
   }
 
   HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders)
