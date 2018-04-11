@@ -163,12 +163,11 @@ class Processor {
             //the new object declaration and create a new object. so that if there are two "a" subfields
             //each one will create its own object
             Boolean entityRequestedPerRepeatedSubfield = subFieldMapping.getBoolean("entityPerRepeatedSubfield");
-            if(entityRequestedPerRepeatedSubfield == null){
-              entityRequestedPerRepeatedSubfield = false;
-            }
-            else{
-              entityRequestedPerRepeatedSubfield = true;
-            }
+
+            // TODO: I've rewritten the current behavior that sets the boolean to false if null and if not null, to
+            // true. Check whether this is the intended behavior. It means that false will be set to true as well.
+            entityRequestedPerRepeatedSubfield = entityRequestedPerRepeatedSubfield != null;
+
             //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
             //will be placed in a single object of that type.
             if(instanceField == null){
