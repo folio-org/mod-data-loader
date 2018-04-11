@@ -244,7 +244,7 @@ public class LoaderAPI implements LoadResource {
     return ((Collection<Object>) method.invoke(object));
   }
 
-  public static Object getValue(Object object, String[] path, String value) {
+  static Object getValue(Object object, String[] path, String value) {
     Class<?> type = null;
     for (int j = 0; j < path.length; j++) {
       try {
