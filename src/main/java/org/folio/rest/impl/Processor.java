@@ -92,7 +92,6 @@ class Processor {
       }
       catch(Exception e){
         block.fail(e);
-        return;
       }
       finally {
         if (entity != null) {
@@ -113,7 +112,6 @@ class Processor {
             LoadResource.PostLoadMarcDataResponse.withCreated(whenDone.result().toString())));
         }
         LOGGER.info("Completed processing of REQUEST");
-        return;
       }
       else{
         LOGGER.error(whenDone.cause().getMessage(), whenDone.cause());
@@ -732,7 +730,6 @@ class Processor {
           LoadResource.PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
       }
       LOGGER.info("Completed processing of REQUEST");
-      return;
     });
   }
 
