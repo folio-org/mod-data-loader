@@ -639,8 +639,7 @@ class Processor {
       httpPost.setHeader("Content-type", "application/octet-stream");
       httpPost.setHeader("Accept", "text/plain");
       // Execute the request
-      HttpResponse response = httpclient.execute(httpPost);
-      return response;
+      return httpclient.execute(httpPost);
     } finally {
       if(httpclient != null){
         httpclient.close();
@@ -677,7 +676,7 @@ class Processor {
           listOfRecords = contentObject2list(jobj);
         }
 
-        if(listOfRecords.size() == 0){
+        if(listOfRecords.isEmpty()){
           block.fail("No records to process...");
           return;
         }
