@@ -190,53 +190,56 @@ public class LoaderAPI implements LoadResource {
    * @return
    */
   static boolean buildObject(Object object, String[] path, boolean newComp, Object val,
-      Object[] complexPreviouslyCreated) {
+                             Object[] complexPreviouslyCreated) {
     Class<?> type;
-    for (int j = 0; j < path.length; j++)
+    for (String pathSegment : path) {
       try {
-        Field field = object.getClass().getDeclaredField(path[j]);
+        Field field = object.getClass().getDeclaredField(pathSegment);
         type = field.getType();
-        if (type.isAssignableFrom(List.class)
-          || type.isAssignableFrom(java.util.Set.class)) {
-          Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
+        if (type.isAssignableFrom(List.class) || type.isAssignableFrom(java.util.Set.class)) {
 
+          Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(pathSegment));
           Collection<Object> coll = setColl(method, object);
-
           ParameterizedType listType = (ParameterizedType) field.getGenericType();
           Class<?> listTypeClass = (Class<?>) listType.getActualTypeArguments()[0];
           if (isPrimitiveOrPrimitiveWrapperOrString(listTypeClass)) {
             coll.add(val);
           } else {
-            if (newComp) {
-              // create a new instance
-              Object o = listTypeClass.newInstance();
-              coll.add(o);
-              object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]), type).invoke(
-                object, coll);
-              object = o;
-              complexPreviouslyCreated[0] = o;
-            } else if (complexPreviouslyCreated[0] != null) {
-              if (complexPreviouslyCreated[0].getClass().isAssignableFrom(listTypeClass)) {
-                object = complexPreviouslyCreated[0];
-              }
-            }
+            object = setObjectCorrectly(newComp, listTypeClass, type, pathSegment, coll, object, complexPreviouslyCreated[0]);
+            complexPreviouslyCreated[0] = object;
           }
         } else if (!isPrimitiveOrPrimitiveWrapperOrString(type)) {
-          Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(path[j]));
-          object = method.invoke(object);
           //currently not needed for instances, may be needed in the future
           //non primitive member in instance object but represented as a list or set of non
           //primitive objects
-        } else {
-          // primitive
-          object.getClass().getMethod(columnNametoCamelCaseWithset(path[j]),
-            new Class[]{val.getClass()}).invoke(object, val);
+          Method method = object.getClass().getMethod(columnNametoCamelCaseWithget(pathSegment));
+          object = method.invoke(object);
+        } else { // primitive
+          object.getClass().getMethod(columnNametoCamelCaseWithset(pathSegment),
+            val.getClass()).invoke(object, val);
         }
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
         return false;
       }
+    }
     return true;
+  }
+
+  private static Object setObjectCorrectly(boolean newComp, Class<?> listTypeClass, Class<?> type, String pathSegment,
+                                           Collection<Object> coll, Object object, Object complexPreviouslyCreated)
+    throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+
+    if (newComp) {
+      Object o = listTypeClass.newInstance();
+      coll.add(o);
+      object.getClass().getMethod(columnNametoCamelCaseWithset(pathSegment), type).invoke(object, coll);
+      return o;
+    } else if ((complexPreviouslyCreated != null) &&
+      (complexPreviouslyCreated.getClass().isAssignableFrom(listTypeClass))) {
+      return complexPreviouslyCreated;
+    }
+    return object;
   }
 
   private static Collection<Object> setColl(Method method, Object object) throws InvocationTargetException,
