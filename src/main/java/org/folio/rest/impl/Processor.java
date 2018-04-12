@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
@@ -162,12 +163,8 @@ class Processor {
             //for repeatable subfields, you can indicate that each repeated subfield should respect
             //the new object declaration and create a new object. so that if there are two "a" subfields
             //each one will create its own object
-            Boolean entityRequestedPerRepeatedSubfield = subFieldMapping.getBoolean("entityPerRepeatedSubfield");
-
-            // TODO: I've rewritten the current behavior that sets the boolean to false if null and if not null, to
-            // true. Check whether this is the intended behavior. It means that false will be set to true as well.
-            entityRequestedPerRepeatedSubfield = entityRequestedPerRepeatedSubfield != null;
-
+            boolean entityRequestedPerRepeatedSubfield =
+              BooleanUtils.isTrue(subFieldMapping.getBoolean("entityPerRepeatedSubfield"));
             //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
             //will be placed in a single object of that type.
             if(instanceField == null){
