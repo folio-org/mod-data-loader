@@ -39,6 +39,8 @@ public class LoaderAPI implements LoadResource {
 
   private static final Logger LOGGER = LogManager.getLogger(LoaderAPI.class);
   private static final String TENANT_ID_NULL = TenantTool.calculateTenantId(null);
+  private static final String TENANT_NOT_SET = "tenant not set";
+  private static final String NOT_IMPLEMENTED = "Not implemented";
 
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
@@ -56,7 +58,7 @@ public class LoaderAPI implements LoadResource {
 
     if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostLoadMarcRulesResponse.withPlainBadRequest("tenant not set")));
+        PostLoadMarcRulesResponse.withPlainBadRequest(TENANT_NOT_SET)));
       return;
     }
     String sqlFile = IOUtils.toString(entity, "UTF8");
@@ -82,7 +84,7 @@ public class LoaderAPI implements LoadResource {
 
     if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostLoadMarcRulesResponse.withPlainBadRequest("tenant not set")));
+        PostLoadMarcRulesResponse.withPlainBadRequest(TENANT_NOT_SET)));
       return;
     }
 
@@ -95,7 +97,7 @@ public class LoaderAPI implements LoadResource {
   public void getLoadMarcData(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-      GetLoadMarcDataResponse.withPlainMethodNotAllowed("Not implemented")));
+      GetLoadMarcDataResponse.withPlainMethodNotAllowed(NOT_IMPLEMENTED)));
   }
 
   @Override
@@ -163,7 +165,7 @@ public class LoaderAPI implements LoadResource {
 
     if (tenantId.equals(TENANT_ID_NULL)) {
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-        PostLoadMarcDataResponse.withPlainBadRequest("tenant not set")));
+        PostLoadMarcDataResponse.withPlainBadRequest(TENANT_NOT_SET)));
       return false;
     }
 
@@ -316,7 +318,7 @@ public class LoaderAPI implements LoadResource {
   public void getLoadStatic(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-      GetLoadStaticResponse.withPlainMethodNotAllowed("Not implemented")));
+      GetLoadStaticResponse.withPlainMethodNotAllowed(NOT_IMPLEMENTED)));
   }
 
   @Override
