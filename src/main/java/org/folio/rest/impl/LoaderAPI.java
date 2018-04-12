@@ -245,19 +245,18 @@ public class LoaderAPI implements LoadResource {
   }
 
   static Object getValue(Object object, String[] path, String value) {
-    Class<?> type = null;
-    for (int j = 0; j < path.length; j++) {
+    Class<?> type = Integer.TYPE;
+    for (String pathSegment : path) {
       try {
-        Field field = object.getClass().getDeclaredField(path[j]);
+        Field field = object.getClass().getDeclaredField(pathSegment);
         type = field.getType();
-        if (type.isAssignableFrom(java.util.List.class)
-            || type.isAssignableFrom(java.util.Set.class)) {
+        if (type.isAssignableFrom(java.util.List.class) || type.isAssignableFrom(java.util.Set.class)) {
           ParameterizedType listType = (ParameterizedType) field.getGenericType();
           type = (Class<?>) listType.getActualTypeArguments()[0];
           object = type.newInstance();
         }
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.error(e.getMessage(), e);
       }
     }
     return getValue(type, value);
