@@ -45,8 +45,6 @@ public class LoaderAPI implements LoadResource {
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
   private int bulkSize = 50000;
-
-  private HttpClientInterface client;
   private Processor processor = new Processor();
 
   @Override
@@ -123,13 +121,9 @@ public class LoaderAPI implements LoadResource {
     }
 
     this.bulkSize = bulkSize;
-
-    String tenantId = TenantTool.calculateTenantId(
-      okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
-
+    String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
     processor.setUrl(storageURL);
-
-    client = HttpClientFactory.getHttpClient(storageURL, tenantId);
+    HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
     //check if inventory storage is responding
     Map<String, String> headers = new HashMap<>();
@@ -152,9 +146,7 @@ public class LoaderAPI implements LoadResource {
           processor.process(false, entity, vertxContext, tenantId, asyncResultHandler, okapiHeaders, bulkSize);
         }
       } finally {
-        if(client != null){
-          client.closeClient();
-        }
+        client.closeClient();
       }
     });
   }
