@@ -301,21 +301,21 @@ public class LoaderAPI implements LoadResource {
   @Override
   public void postLoadStatic(String storageURL, InputStream entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) throws Exception {
+      Context vertxContext) {
 
     processor.processStatic(storageURL, false, entity, okapiHeaders, asyncResultHandler, vertxContext);
   }
 
   @Override
   public void getLoadStatic(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
       GetLoadStaticResponse.withPlainMethodNotAllowed(NOT_IMPLEMENTED)));
   }
 
   @Override
   public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     processor.processStatic(null, true, entity, okapiHeaders, asyncResultHandler, vertxContext);
   }
