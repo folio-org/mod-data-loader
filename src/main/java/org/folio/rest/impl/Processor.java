@@ -45,6 +45,11 @@ class Processor {
 
   private static final Logger LOGGER = LogManager.getLogger(Processor.class);
   private static final String IMPORT_URL = "/admin/importSQL";
+  private static final String RECORD = "record";
+  private static final String VALUES = "values";
+  private static final String VALUE = "value";
+  private static final String CUSTOM = "custom";
+  private static final String TYPE = "type";
 
   private int processedCount;
   private StringBuilder importSQLStatement = new StringBuilder();
@@ -211,7 +216,7 @@ class Processor {
               if(delimiters != null){
                 for (int j = 0; j < delimiters.size(); j++) {
                   JsonObject job = delimiters.getJsonObject(j);
-                  String delimiter = job.getString("value");
+                  String delimiter = job.getString(VALUE);
                   JsonArray subFieldswithDel = job.getJsonArray("subfields");
                   StringBuilder subFieldsStringBuilder = new StringBuilder();
                   buffers2concat.add(subFieldsStringBuilder);
@@ -428,7 +433,7 @@ class Processor {
       //                  "value": "book"
       //if this value is not indicated, the value mapped to the instance field will be the
       //output of the function - see below for more on that
-      String ruleConstVal = rule.getString("value");
+      String ruleConstVal = rule.getString(VALUE);
       boolean conditionsMet = true;
       //each rule has conditions, if they are all met, then mark
       //continue processing the next condition, if all conditions are met
@@ -452,13 +457,13 @@ class Processor {
         //for example:
         //          "type": "custom",
         //          "value": "DATA.replace(',' , ' ');"
-        String []function = condition.getString("type").split(",");
+        String []function = condition.getString(TYPE).split(",");
         //we need to know if one of the functions is a custom function
         //so that we know how to handle the value field - the custom indication
         //may not be the first function listed in the function list
         //a little wasteful, but this will probably only loop at most over 2 or 3 function names
         for (int n = 0; n < function.length; n++) {
-          if("custom".equals(function[n].trim())){
+          if(CUSTOM.equals(function[n].trim())){
             isCustom = true;
             break;
           }
@@ -471,9 +476,9 @@ class Processor {
           //whose value also needs to be passed into any declared function
           data = leader.toString();
         }
-        String valueParam = condition.getString("value");
+        String valueParam = condition.getString(VALUE);
         for (int l = 0; l < function.length; l++) {
-          if("custom".equals(function[l].trim())){
+          if(CUSTOM.equals(function[l].trim())){
             try{
               data = (String)JSManager.runJScript(valueParam, data);
             }
@@ -577,12 +582,12 @@ class Processor {
    */
   private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
     List<Subfield> expandedSubs = new ArrayList<>();
-    String func = splitConf.getString("type");
+    String func = splitConf.getString(TYPE);
     boolean isCustom = false;
-    if("custom".equals(func)){
+    if(CUSTOM.equals(func)){
       isCustom = true;
     }
-    String param = splitConf.getString("value");
+    String param = splitConf.getString(VALUE);
     for (Subfield sub : subs) {
       String data = sub.getData();
       Iterator<?> splitData;
@@ -658,7 +663,7 @@ class Processor {
           return;
         }
 
-        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue("values").toString());
+        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
 
         List<JsonObject> listOfRecords;
 
@@ -676,7 +681,7 @@ class Processor {
         StringBuilder importSQLStatement = new StringBuilder();
         if(!isTest){
           importSQLStatement.append("COPY " + tenantId)
-            .append("_mod_inventory_storage.").append(jobj.getString("type"))
+            .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
             .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
             .append(System.lineSeparator());
         }
@@ -725,9 +730,9 @@ class Processor {
   }
 
   private String validateStaticLoad(JsonObject jobj, boolean isTest){
-    String table = jobj.getString("type");
-    JsonObject record = jobj.getJsonObject("record");
-    Object values = jobj.getValue("values");
+    String table = jobj.getString(TYPE);
+    JsonObject record = jobj.getJsonObject(RECORD);
+    Object values = jobj.getValue(VALUES);
 
     if((table == null && !isTest)){
       return "type field (table name) must be defined in input";
@@ -742,8 +747,8 @@ class Processor {
   }
 
   private List<JsonObject> contentArray2list(JsonObject jobj){
-    JsonArray values = jobj.getJsonArray("values");
-    JsonObject record = jobj.getJsonObject("record");
+    JsonArray values = jobj.getJsonArray(VALUES);
+    JsonObject record = jobj.getJsonObject(RECORD);
     List<JsonObject> listOfRecords = new ArrayList<>();
     for (int i = 0; i < values.size(); i++) {
       JsonObject template = record.copy();
@@ -755,8 +760,8 @@ class Processor {
   }
 
   private List<JsonObject> contentObject2list(JsonObject jobj){
-    JsonObject values = jobj.getJsonObject("values");
-    JsonObject record = jobj.getJsonObject("record");
+    JsonObject values = jobj.getJsonObject(VALUES);
+    JsonObject record = jobj.getJsonObject(RECORD);
     List<JsonObject> listOfRecords = new ArrayList<>();
     values.forEach( entry -> {
       String field = entry.getKey();
