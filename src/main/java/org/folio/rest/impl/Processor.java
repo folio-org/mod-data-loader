@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -201,7 +202,7 @@ class Processor {
           JsonArray subFields = jObj.getJsonArray("subfield");
           //push into a set so that we can do a lookup for each subfield in the marc instead
           //of looping over the array
-          Set<String> subFieldsSet = new HashSet<String>(subFields.getList());
+          Set<String> subFieldsSet = new HashSet<>(subFields.getList());
           //it can be a one to one mapping, or there could be rules to apply prior to the mapping
           JsonArray rules = jObj.getJsonArray("rules");
           //allow to declare a delimiter when concatenating subfields.
@@ -333,7 +334,9 @@ class Processor {
     }
   }
 
-  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done, Map<String, String> okapiHeaders) throws Exception {
+  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done, Map<String,
+    String> okapiHeaders) throws JsonProcessingException {
+
     if(importSQLStatement.length() == 0 && record == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
