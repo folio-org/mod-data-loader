@@ -163,7 +163,7 @@ class Processor {
     throws ScriptException, IllegalAccessException, InstantiationException {
 
     boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
-    Object rememberComplexObj[] = new Object[] { null };
+    Object[] rememberComplexObj = new Object[] { null };
     DataField dataField = dfIter.next();
     JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
     if (mappingEntry != null) {
@@ -230,7 +230,7 @@ class Processor {
           //subfield sets. this list is then iterated over and used to delimit subfield sets
           final List<StringBuilder> buffers2concat = new ArrayList<>();
           //separator between subfields with different delimiters
-          String separator[] = new String[]{ null };
+          String[] separator = new String[]{ null };
           if(delimiters != null){
             for (int j = 0; j < delimiters.size(); j++) {
               JsonObject job = delimiters.getJsonObject(j);
@@ -250,7 +250,7 @@ class Processor {
           else{
             buffers2concat.add(new StringBuilder());
           }
-          String embeddedFields[] = jObj.getString("target").split("\\.");
+          String[] embeddedFields = jObj.getString("target").split("\\.");
           if (!isMappingValid(object, embeddedFields)) {
             LOGGER.debug("bad mapping " + jObj.encode());
             continue;
@@ -390,7 +390,7 @@ class Processor {
                                        Object object) throws IllegalAccessException, InstantiationException {
     //when populating an object with multiple fields from the same marc field
     //this is used to pass the reference of the previously created object to the buildObject function
-    Object rememberComplexObj[] = new Object[]{null};
+    Object[] rememberComplexObj = new Object[]{null};
     boolean createNewComplexObj = true;
 
     for (int i = 0; i < controlFieldRules.size(); i++) {
@@ -541,8 +541,8 @@ class Processor {
    * this can be null if we are now creating a new object within the instance object
    * @return
    */
-  private boolean createNewObject(String embeddedFields[], Object object, String data,
-                                  boolean createNewComplexObj, Object rememberComplexObj[]) {
+  private boolean createNewObject(String[] embeddedFields, Object object, String data,
+                                  boolean createNewComplexObj, Object[] rememberComplexObj) {
 
     if(data.length() != 0){
       Object val = getValue(object, embeddedFields, data);
