@@ -31,10 +31,7 @@ import io.vertx.core.json.JsonObject;
 
 import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperOrString;
 
-/**
- * @author shale
- * @author acls (editor)
- */
+
 public class LoaderAPI implements LoadResource {
 
   private static final Logger LOGGER = LogManager.getLogger(LoaderAPI.class);

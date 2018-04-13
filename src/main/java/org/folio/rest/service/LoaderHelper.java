@@ -3,10 +3,7 @@ package org.folio.rest.service;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 
-/**
- * @author shale
- * @author acls (editor)
- */
+
 public class LoaderHelper {
 
   private LoaderHelper() {}
