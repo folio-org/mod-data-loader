@@ -614,18 +614,13 @@ class Processor {
     subs.addAll(expandedSubs);
   }
 
-  HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders)
-    throws IOException {
-
-    CloseableHttpClient httpclient = null;
-    try {
-      RequestConfig config = RequestConfig.custom()
-        .setConnectTimeout(CONNECT_TIMEOUT)
-        .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-        .setSocketTimeout(SO_TIMEOUT)
-        .build();
-      httpclient = HttpClientBuilder.create().setDefaultRequestConfig(
-        config).build();
+  HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
+    RequestConfig config = RequestConfig.custom()
+      .setConnectTimeout(CONNECT_TIMEOUT)
+      .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
+      .setSocketTimeout(SO_TIMEOUT)
+      .build();
+    try (CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultRequestConfig(config).build()) {
       HttpPost httpPost = new HttpPost(url);
       StringEntity entity = new StringEntity(data.toString(), "UTF8");
       httpPost.setEntity(entity);
@@ -637,12 +632,7 @@ class Processor {
         okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
       httpPost.setHeader("Content-type", "application/octet-stream");
       httpPost.setHeader("Accept", "text/plain");
-      // Execute the request
       return httpclient.execute(httpPost);
-    } finally {
-      if(httpclient != null){
-        httpclient.close();
-      }
     }
   }
 
