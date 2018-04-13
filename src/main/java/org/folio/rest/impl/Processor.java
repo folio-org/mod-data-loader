@@ -58,7 +58,6 @@ class Processor {
   private int bulkSize;
   private JsonObject rulesFile;
   private String tenantId;
-  private InputStream entity;
   private Map<String, String> okapiHeaders;
   private String url;
 
