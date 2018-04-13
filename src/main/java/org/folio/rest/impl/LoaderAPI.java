@@ -238,38 +238,6 @@ public class LoaderAPI implements LoadResource {
     return ((Collection<Object>) method.invoke(object));
   }
 
-  static Object getValue(Object object, String[] path, String value) {
-    Class<?> type = Integer.TYPE;
-    for (String pathSegment : path) {
-      try {
-        Field field = object.getClass().getDeclaredField(pathSegment);
-        type = field.getType();
-        if (type.isAssignableFrom(java.util.List.class) || type.isAssignableFrom(java.util.Set.class)) {
-          ParameterizedType listType = (ParameterizedType) field.getGenericType();
-          type = (Class<?>) listType.getActualTypeArguments()[0];
-          object = type.newInstance();
-        }
-      } catch (Exception e) {
-        LOGGER.error(e.getMessage(), e);
-      }
-    }
-    return getValue(type, value);
-  }
-
-  private static Object getValue(Class<?> type, String value) {
-    Object val;
-    if (type.isAssignableFrom(String.class)) {
-      val = value;
-    } else if (type.isAssignableFrom(Boolean.class)) {
-      val = Boolean.valueOf(value);
-    } else if (type.isAssignableFrom(Double.class)) {
-      val = Double.valueOf(value);
-    } else {
-      val = Integer.valueOf(value);
-    }
-    return val;
-  }
-
   private static String columnNametoCamelCaseWithset(String str) {
     StringBuilder sb = new StringBuilder(str);
     sb.replace(0, 1, String.valueOf(Character.toUpperCase(sb.charAt(0))));

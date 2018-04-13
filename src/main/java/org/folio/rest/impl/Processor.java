@@ -35,6 +35,8 @@ import javax.script.ScriptException;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 import static org.folio.rest.service.LoaderHelper.isMappingValid;
@@ -396,7 +398,7 @@ class Processor {
             LOGGER.debug("bad mapping " + rules.encode());
             continue;
           }
-          Object val = LoaderAPI.getValue(object, embeddedFields, data);
+          Object val = getValue(object, embeddedFields, data);
           LoaderAPI.buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
           createNewComplexObj = false;
         }
@@ -532,7 +534,7 @@ class Processor {
                                   boolean createNewComplexObj, Object rememberComplexObj[]) throws Exception {
 
     if(data.length() != 0){
-      Object val = LoaderAPI.getValue(object, embeddedFields, data);
+      Object val = getValue(object, embeddedFields, data);
       try {
         return LoaderAPI.buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
       } catch (Exception e) {
@@ -769,5 +771,37 @@ class Processor {
       }
     });
     return listOfRecords;
+  }
+
+  private static Object getValue(Object object, String[] path, String value) {
+    Class<?> type = Integer.TYPE;
+    for (String pathSegment : path) {
+      try {
+        Field field = object.getClass().getDeclaredField(pathSegment);
+        type = field.getType();
+        if (type.isAssignableFrom(java.util.List.class) || type.isAssignableFrom(java.util.Set.class)) {
+          ParameterizedType listType = (ParameterizedType) field.getGenericType();
+          type = (Class<?>) listType.getActualTypeArguments()[0];
+          object = type.newInstance();
+        }
+      } catch (Exception e) {
+        LOGGER.error(e.getMessage(), e);
+      }
+    }
+    return getValue(type, value);
+  }
+
+  private static Object getValue(Class<?> type, String value) {
+    Object val;
+    if (type.isAssignableFrom(String.class)) {
+      val = value;
+    } else if (type.isAssignableFrom(Boolean.class)) {
+      val = Boolean.valueOf(value);
+    } else if (type.isAssignableFrom(Double.class)) {
+      val = Double.valueOf(value);
+    } else {
+      val = Integer.valueOf(value);
+    }
+    return val;
   }
 }
