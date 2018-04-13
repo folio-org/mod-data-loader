@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -365,7 +364,7 @@ class Processor {
   }
 
   private void processMarcControlSection(Iterator<ControlField> ctrlIter, Leader leader, Object object, JsonObject rulesFile)
-    throws Exception {
+    throws IllegalAccessException, InstantiationException {
     //iterate over all the control fields in the marc record
     //for each control field , check if there is a rule for mapping that field in the rule file
     while (ctrlIter.hasNext()) {
@@ -528,10 +527,9 @@ class Processor {
    * @param rememberComplexObj - the current object within the instance object we are currently populating
    * this can be null if we are now creating a new object within the instance object
    * @return
-   * @throws Exception
    */
   private boolean createNewObject(String embeddedFields[], Object object, String data,
-                                  boolean createNewComplexObj, Object rememberComplexObj[]) throws Exception {
+                                  boolean createNewComplexObj, Object rememberComplexObj[]) {
 
     if(data.length() != 0){
       Object val = getValue(object, embeddedFields, data);
@@ -577,7 +575,7 @@ class Processor {
    * @param splitConf
    * @throws ScriptException
    */
-  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws Exception {
+  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
     List<Subfield> expandedSubs = new ArrayList<>();
     String func = splitConf.getString("type");
     boolean isCustom = false;
@@ -610,7 +608,7 @@ class Processor {
   }
 
   HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders)
-    throws ClientProtocolException, IOException {
+    throws IOException {
 
     CloseableHttpClient httpclient = null;
     try {
