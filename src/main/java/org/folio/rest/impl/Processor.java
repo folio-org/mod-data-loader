@@ -376,36 +376,40 @@ class Processor {
       ControlField controlField = ctrlIter.next();
       //get entry for this control field in the rules.json file
       JsonArray controlFieldRules = rulesFile.getJsonArray(controlField.getTag());
-      //when populating an object with multiple fields from the same marc field
-      //this is used to pass the reference of the previously created object to the buildObject function
-      Object rememberComplexObj[] = new Object[]{null};
-      boolean createNewComplexObj = true;
       if (controlFieldRules != null) {
-        for (int i = 0; i < controlFieldRules.size(); i++) {
-          JsonObject cfRule = controlFieldRules.getJsonObject(i);
-          //get rules - each rule can contain multiple conditions that need to be met and a
-          //value to inject in case all the conditions are met
-          JsonArray rules = cfRule.getJsonArray("rules");
-          //the content of the Marc control field
-          String data = controlField.getData();
-          data = processRules(data, rules, leader);
-          if (data != null) {
-            if (data.length() == 0) {
-              continue;
-            }
-          }
-          //if conditionsMet = true, then all conditions of a specific rule were met
-          //and we can set the target to the rule's value
-          String target = cfRule.getString("target");
-          String embeddedFields[] = target.split("\\.");
-          if (!isMappingValid(object, embeddedFields)) {
-            LOGGER.debug("bad mapping " + rules.encode());
-            continue;
-          }
-          Object val = getValue(object, embeddedFields, data);
-          LoaderAPI.buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
-          createNewComplexObj = false;
-        }
+        handleControlFieldRules(controlFieldRules, controlField, leader, object);
+      }
+    }
+  }
+
+  private void handleControlFieldRules(JsonArray controlFieldRules, ControlField controlField, Leader leader,
+                                       Object object) throws IllegalAccessException, InstantiationException {
+    //when populating an object with multiple fields from the same marc field
+    //this is used to pass the reference of the previously created object to the buildObject function
+    Object rememberComplexObj[] = new Object[]{null};
+    boolean createNewComplexObj = true;
+
+    for (int i = 0; i < controlFieldRules.size(); i++) {
+      JsonObject cfRule = controlFieldRules.getJsonObject(i);
+      //get rules - each rule can contain multiple conditions that need to be met and a
+      //value to inject in case all the conditions are met
+      JsonArray rules = cfRule.getJsonArray("rules");
+      //the content of the Marc control field
+      String data = processRules(controlField.getData(), rules, leader);
+      if ((data != null) && data.isEmpty()) {
+        continue;
+      }
+      //if conditionsMet = true, then all conditions of a specific rule were met
+      //and we can set the target to the rule's value
+      String target = cfRule.getString("target");
+      String[] embeddedFields = target.split("\\.");
+
+      if (isMappingValid(object, embeddedFields)) {
+        Object val = getValue(object, embeddedFields, data);
+        LoaderAPI.buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
+        createNewComplexObj = false;
+      } else {
+        LOGGER.debug("bad mapping " + rules.encode());
       }
     }
   }
