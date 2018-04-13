@@ -56,7 +56,10 @@ class Processor {
   private StringBuilder importSQLStatement = new StringBuilder();
   private int counter;
   private int bulkSize;
-
+  private JsonObject rulesFile;
+  private String tenantId;
+  private InputStream entity;
+  private Map<String, String> okapiHeaders;
   private String url;
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
@@ -64,16 +67,21 @@ class Processor {
   private static final int SO_TIMEOUT = 180 * 1000; //during data flow, if interrupted for 180sec, regard connection as
   // stalled/broken.
 
+  Processor(String tenantId, Map<String, String> okapiHeaders) {
+    this.okapiHeaders = okapiHeaders;
+    this.tenantId = tenantId;
+    this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
+  }
+
   void setUrl(String url) {
     this.url = url;
   }
 
-  void process(boolean isTest, InputStream entity, Context vertxContext, String tenantId,
-                       Handler<AsyncResult<Response>> asyncResultHandler, Map<String, String> okapiHeaders, int bulkSize){
+  void process(boolean isTest, InputStream entity, Context vertxContext,
+                       Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
 
     this.bulkSize = bulkSize;
     long start = System.currentTimeMillis();
-    JsonObject rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
 
     vertxContext.owner().executeBlocking( block -> {
 
@@ -83,7 +91,7 @@ class Processor {
         StringBuilder unprocessed = new StringBuilder();
 
         while (reader.hasNext()) {
-          processSingleEntry(rulesFile, reader, isTest, tenantId, okapiHeaders, block, unprocessed);
+          processSingleEntry(reader, isTest, block, unprocessed);
         }
 
         String error = managePushToDB(isTest, tenantId, null, true, okapiHeaders);
@@ -121,8 +129,8 @@ class Processor {
     });
   }
 
-  private void processSingleEntry(JsonObject rulesFile, MarcStreamReader reader, boolean isTest, String tenantId,
-                                  Map<String, String> okapiHeaders, Future<Object> block, StringBuilder unprocessed) {
+  private void processSingleEntry(MarcStreamReader reader, boolean isTest,
+                                  Future<Object> block, StringBuilder unprocessed) {
 
     try {
       processedCount++;
@@ -239,6 +247,7 @@ class Processor {
               if(splitter != null){
                 expandSubfields(subs, splitter);
               }
+
               int size = subs.size();
               for (int k = 0; k < size; k++) {
                 String data = subs.get(k).getData();
@@ -295,6 +304,7 @@ class Processor {
                   }
                 }
               }
+
               if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
                 String completeData = generateDataString(buffers2concat, separator[0]);
                 if(applyPost){
@@ -617,8 +627,8 @@ class Processor {
       .build();
     try (CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultRequestConfig(config).build()) {
       HttpPost httpPost = new HttpPost(url);
-      StringEntity entity = new StringEntity(data.toString(), "UTF8");
-      httpPost.setEntity(entity);
+      StringEntity stringEntity = new StringEntity(data.toString(), "UTF8");
+      httpPost.setEntity(stringEntity);
       httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT,
         okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
       httpPost.setHeader(RestVerticle.OKAPI_HEADER_TOKEN,
@@ -636,7 +646,7 @@ class Processor {
     vertxContext.owner().executeBlocking( block -> {
       try {
         LOGGER.info("REQUEST ID " + UUID.randomUUID().toString());
-        String tenantId = TenantTool.calculateTenantId(
+        tenantId = TenantTool.calculateTenantId(
           okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
         String content = IoUtil.toStringUtf8(entity);
