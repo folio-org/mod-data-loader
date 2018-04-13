@@ -614,7 +614,7 @@ class Processor {
     subs.addAll(expandedSubs);
   }
 
-  HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
+  private HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
     RequestConfig config = RequestConfig.custom()
       .setConnectTimeout(CONNECT_TIMEOUT)
       .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
