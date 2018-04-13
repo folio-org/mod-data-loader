@@ -20,6 +20,7 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
+import org.folio.rest.service.LoaderHelper;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.TenantTool;
@@ -98,13 +99,7 @@ class Processor {
         block.fail(e);
       }
       finally {
-        if (entity != null) {
-          try {
-            entity.close();
-          } catch (IOException e) {
-            LOGGER.error(e.getMessage(), e);
-          }
-        }
+        LoaderHelper.closeInputStream(entity);
       }
     }, false, whenDone -> {
       if(whenDone.succeeded()){

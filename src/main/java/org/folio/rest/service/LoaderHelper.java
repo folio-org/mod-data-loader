@@ -1,11 +1,17 @@
 package org.folio.rest.service;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 
 
 public class LoaderHelper {
 
+  private static final Logger LOGGER = LogManager.getLogger(LoaderHelper.class);
   private LoaderHelper() {}
 
   public static boolean isMappingValid(Object object, String[] path)
@@ -41,5 +47,15 @@ public class LoaderHelper {
       || type == Long.class || type == Integer.class || type == Short.class
       || type == Character.class || type == Byte.class || type == Boolean.class
       || type == String.class;
+  }
+
+  public static void closeInputStream(InputStream inputStream) {
+    if (inputStream != null) {
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error(e.getMessage(), e);
+      }
+    }
   }
 }
