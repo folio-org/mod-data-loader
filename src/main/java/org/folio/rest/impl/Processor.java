@@ -339,8 +339,10 @@ class Processor {
       return null;
     }
     if (importSQLStatement.length() == 0 && !isTest) {
-      importSQLStatement.append("COPY " + tenantId
-        + "_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
+      importSQLStatement
+        .append("COPY ")
+        .append(tenantId)
+        .append("_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
       importSQLStatement.append(System.lineSeparator());
     }
     if(record != null){
@@ -647,19 +649,16 @@ class Processor {
           okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
         String content = IoUtil.toStringUtf8(entity);
-
         JsonObject jobj = new JsonObject(content);
-
         String error = validateStaticLoad(jobj, isTest);
+        StringBuilder importSQLStatementMethod = new StringBuilder();
+        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
+        List<JsonObject> listOfRecords;
 
         if(error != null){
           block.fail(error);
           return;
         }
-
-        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
-
-        List<JsonObject> listOfRecords;
 
         if(isArray){
           listOfRecords = contentArray2list(jobj);
@@ -672,9 +671,10 @@ class Processor {
           return;
         }
 
-        StringBuilder importSQLStatement = new StringBuilder();
         if(!isTest){
-          importSQLStatement.append("COPY " + tenantId)
+          importSQLStatementMethod
+            .append("COPY ")
+            .append(tenantId)
             .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
             .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
             .append(System.lineSeparator());
@@ -687,12 +687,12 @@ class Processor {
             id = UUID.randomUUID().toString();
           }
           String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
-          importSQLStatement.append(id).append("|").append(persistRecord).append(
+          importSQLStatementMethod.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
         }
         if(!isTest){
-          importSQLStatement.append("\\.");
-          HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+          importSQLStatementMethod.append("\\.");
+          HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
           if (response.getStatusLine().getStatusCode() != 200) {
             String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
             LOGGER.error(e);
@@ -700,7 +700,7 @@ class Processor {
             return;
           }
         }
-        block.complete(importSQLStatement);
+        block.complete(importSQLStatementMethod);
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
         block.fail(e);
