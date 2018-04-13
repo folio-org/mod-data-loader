@@ -152,8 +152,6 @@ class Processor {
 
       String error = managePushToDB(isTest, tenantId, object, false, okapiHeaders);
       if(error != null){
-        // TODO: check whether this exception should be thrown outside of this single entry try block or if it's fine
-        // here and may be caught by the catch clause
         block.fail(new Exception(error));
       }
     } catch (Exception e) {
