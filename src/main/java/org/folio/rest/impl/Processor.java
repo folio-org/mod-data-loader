@@ -443,7 +443,7 @@ class Processor {
         JsonObject condition = conditions.getJsonObject(m);
         //1..n functions can be declared within a condition (comma delimited).
         //for example:
-        //  A condition with with one function, a paramter that will be passed to the
+        //  A condition with with one function, a parameter that will be passed to the
         //  function, and the expected value for this condition to be met
         //   {
         //        "type": "char_select",
@@ -457,13 +457,13 @@ class Processor {
         //for example:
         //          "type": "custom",
         //          "value": "DATA.replace(',' , ' ');"
-        String []function = condition.getString(TYPE).split(",");
+        String[] functions = condition.getString(TYPE).split(",");
         //we need to know if one of the functions is a custom function
         //so that we know how to handle the value field - the custom indication
         //may not be the first function listed in the function list
         //a little wasteful, but this will probably only loop at most over 2 or 3 function names
-        for (int n = 0; n < function.length; n++) {
-          if(CUSTOM.equals(function[n].trim())){
+        for (String function : functions) {
+          if(CUSTOM.equals(function.trim())){
             isCustom = true;
             break;
           }
@@ -477,8 +477,8 @@ class Processor {
           data = leader.toString();
         }
         String valueParam = condition.getString(VALUE);
-        for (int l = 0; l < function.length; l++) {
-          if(CUSTOM.equals(function[l].trim())){
+        for (String function : functions) {
+          if(CUSTOM.equals(function.trim())){
             try{
               data = (String)JSManager.runJScript(valueParam, data);
             }
@@ -490,7 +490,7 @@ class Processor {
             }
           }
           else{
-            String c = NormalizationFunctions.runFunction(function[l].trim(), data, condition.getString("parameter"));
+            String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
             if(valueParam != null && !c.equals(valueParam) && !isCustom){
               //still allow a condition to compare the output of a function on the data to a constant value
               //unless this is a custom javascript function in which case, the value holds the custom function
@@ -556,9 +556,7 @@ class Processor {
    */
   private String generateDataString(List<StringBuilder> buffers2concat, String separator){
     StringBuilder finalData = new StringBuilder();
-    int size = buffers2concat.size();
-    for(int x=0; x<size; x++){
-      StringBuilder sb = buffers2concat.get(x);
+    for (StringBuilder sb : buffers2concat) {
       if(sb.length() > 0){
         if(finalData.length() > 0){
           finalData.append(separator);
@@ -685,14 +683,14 @@ class Processor {
             .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
             .append(System.lineSeparator());
         }
-        for (int i = 0; i < listOfRecords.size(); i++) {
+        for (JsonObject record : listOfRecords) {
           //if an "id" exists in the template record, use that id
-          String id = listOfRecords.get(i).getString("id");
+          String id = record.getString("id");
           if(id == null || "${randomUUID}".equals(id)){
             //if there is no pre-populated "id" then generate one
             id = UUID.randomUUID().toString();
           }
-          String persistRecord = listOfRecords.get(i).encode().replaceAll("\\$\\{randomUUID\\}", id);
+          String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
           importSQLStatement.append(id).append("|").append(persistRecord).append(
             System.lineSeparator());
         }
