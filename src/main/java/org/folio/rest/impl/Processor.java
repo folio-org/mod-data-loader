@@ -22,6 +22,7 @@ import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.service.LoaderHelper;
+import org.folio.rest.struct.ProcessedRule;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.TenantTool;
@@ -427,110 +428,119 @@ class Processor {
     }
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
-    for (int k = 0; k < rules.size(); k++) {
-      //get the rules one by one
-      JsonObject rule = rules.getJsonObject(k);
-      //get the conditions associated with each rule
-      JsonArray conditions = rule.getJsonArray("conditions");
-      //get the constant value (if is was declared) to set the instance field to in case all
-      //conditions are met for a rule, since there can be multiple rules
-      //each with multiple conditions, a match of all conditions in a single rule
-      //will set the instance's field to the const value. hence, it is an AND
-      //between all conditions and an OR between all rules
-      //example of a constant value declaration in a rule:
-      //      "rules": [
-      //                {
-      //                  "conditions": [.....],
-      //                  "value": "book"
-      //if this value is not indicated, the value mapped to the instance field will be the
-      //output of the function - see below for more on that
-      String ruleConstVal = rule.getString(VALUE);
-      boolean conditionsMet = true;
-      //each rule has conditions, if they are all met, then mark
-      //continue processing the next condition, if all conditions are met
-      //set the target to the value of the rule
-      boolean isCustom = false;
-      for (int m = 0; m < conditions.size(); m++) {
-        JsonObject condition = conditions.getJsonObject(m);
-        //1..n functions can be declared within a condition (comma delimited).
-        //for example:
-        //  A condition with with one function, a parameter that will be passed to the
-        //  function, and the expected value for this condition to be met
-        //   {
-        //        "type": "char_select",
-        //        "parameter": "0",
-        //        "value": "7"
-        //   }
-        //the functions here can rely on the single value field for comparison
-        //to the output of all functions on the marc's field data
-        //or, if a custom function is declared, the value will contain
-        //the javascript of the custom function
-        //for example:
-        //          "type": "custom",
-        //          "value": "DATA.replace(',' , ' ');"
-        String[] functions = condition.getString(TYPE).split(",");
-        //we need to know if one of the functions is a custom function
-        //so that we know how to handle the value field - the custom indication
-        //may not be the first function listed in the function list
-        //a little wasteful, but this will probably only loop at most over 2 or 3 function names
-        for (String function : functions) {
-          if(CUSTOM.equals(function.trim())){
-            isCustom = true;
-            break;
-          }
-        }
-
-        /*  start processing the condition  */
-
-        if(leader != null && condition.getBoolean("LDR") != null){
-          //the rule also has a condition on the leader field
-          //whose value also needs to be passed into any declared function
-          data = leader.toString();
-        }
-        String valueParam = condition.getString(VALUE);
-        for (String function : functions) {
-          if(CUSTOM.equals(function.trim())){
-            try{
-              data = (String)JSManager.runJScript(valueParam, data);
-            }
-            catch(Exception e){
-              //the function has thrown an exception meaning this condition has failed,
-              //hence this specific rule has failed
-              conditionsMet = false;
-              LOGGER.error(e.getMessage(), e);
-            }
-          }
-          else{
-            String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
-            if(valueParam != null && !c.equals(valueParam) && !isCustom){
-              //still allow a condition to compare the output of a function on the data to a constant value
-              //unless this is a custom javascript function in which case, the value holds the custom function
-              conditionsMet = false;
-              break;
-            }
-            else if (ruleConstVal == null){
-              //if there is no val to use as a replacement , then assume the function
-              //is doing generating the needed value and set the data to the returned value
-              data = c;
-            }
-          }
-        }
-        if(!conditionsMet){
-          //all conditions for this rule we not met, revert data to the originalData passed in.
-          data = originalData;
-          break;
-        }
-      }
-      if(conditionsMet && ruleConstVal != null && !isCustom){
-        //all conditions of the rule were met, and there
-        //is a constant value associated with the rule, and this is
-        //not a custom rule, then set the data to the const value
-        //no need to continue processing other rules for this subfield
-        data = ruleConstVal;
+    for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
+      ProcessedRule pr = processRule(rules.getJsonObject(ruleIndex), leader, data, originalData);
+      data = pr.getData();
+      if (pr.doBreak()) {
         break;
       }
     }
     return Escaper.escape(data);
+  }
+
+  private ProcessedRule processRule(JsonObject rule, Leader leader, String data, String originalData) {
+
+
+    //get the conditions associated with each rule
+    JsonArray conditions = rule.getJsonArray("conditions");
+    //get the constant value (if is was declared) to set the instance field to in case all
+    //conditions are met for a rule, since there can be multiple rules
+    //each with multiple conditions, a match of all conditions in a single rule
+    //will set the instance's field to the const value. hence, it is an AND
+    //between all conditions pr.doBreak() ?and an OR between all rules
+    //example of a constant value declaration in a rule:
+    //      "rules": [
+    //                {
+    //                  "conditions": [.....],
+    //                  "value": "book"
+    //if this value is not indicated, the value mapped to the instance field will be the
+    //output of the function - see below for more on that
+    String ruleConstVal = rule.getString(VALUE);
+    boolean conditionsMet = true;
+    //each rule has conditions, if they are all met, then mark
+    //continue processing the next condition, if all conditions are met
+    //set the target to the value of the rule
+    boolean isCustom = false;
+    for (int m = 0; m < conditions.size(); m++) {
+      JsonObject condition = conditions.getJsonObject(m);
+      //1..n functions can be declared within a condition (comma delimited).
+      //for example:
+      //  A condition with with one function, a parameter that will be passed to the
+      //  function, and the expected value for this condition to be met
+      //   {
+      //        "type": "char_select",
+      //        "parameter": "0",
+      //        "value": "7"
+      //   }
+      //the functions here can rely on the single value field for comparison
+      //to the output of all functions on the marc's field data
+      //or, if a custom function is declared, the value will contain
+      //the javascript of the custom function
+      //for example:
+      //          "type": "custom",
+      //          "value": "DATA.replace(',' , ' ');"
+      String[] functions = condition.getString(TYPE).split(",");
+      //we need to know if one of the functions is a custom function
+      //so that we know how to handle the value field - the custom indication
+      //may not be the first function listed in the function list
+      //a little wasteful, but this will probably only loop at most over 2 or 3 function names
+      for (String function : functions) {
+        if(CUSTOM.equals(function.trim())){
+          isCustom = true;
+          break;
+        }
+      }
+
+      /*  start processing the condition  */
+
+      if(leader != null && condition.getBoolean("LDR") != null){
+        //the rule also has a condition on the leader field
+        //whose value also needs to be passed into any declared function
+        data = leader.toString();
+      }
+      String valueParam = condition.getString(VALUE);
+      for (String function : functions) {
+        if(CUSTOM.equals(function.trim())){
+          try{
+            data = (String)JSManager.runJScript(valueParam, data);
+          }
+          catch(Exception e){
+            //the function has thrown an exception meaning this condition has failed,
+            //hence this specific rule has failed
+            conditionsMet = false;
+            LOGGER.error(e.getMessage(), e);
+          }
+        }
+        else{
+          String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
+          if(valueParam != null && !c.equals(valueParam) && !isCustom){
+            //still allow a condition to compare the output of a function on the data to a constant value
+            //unless this is a custom javascript function in which case, the value holds the custom function
+            conditionsMet = false;
+            break;
+          }
+          else if (ruleConstVal == null){
+            //if there is no val to use as a replacement , then assume the function
+            //is doing generating the needed value and set the data to the returned value
+            data = c;
+          }
+        }
+      }
+      if(!conditionsMet){
+        //all conditions for this rule we not met, revert data to the originalData passed in.
+        data = originalData;
+        break;
+      }
+    }
+    if(conditionsMet && ruleConstVal != null && !isCustom){
+      //all conditions of the rule were met, and there
+      //is a constant value associated with the rule, and this is
+      //not a custom rule, then set the data to the const value
+      //no need to continue processing other rules for this subfield
+      data = ruleConstVal;
+      return new ProcessedRule(data, true);
+    }
+    return new ProcessedRule(data, false);
   }
 
   /**
