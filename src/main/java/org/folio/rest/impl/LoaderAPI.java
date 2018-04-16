@@ -267,7 +267,7 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
-    new Processor(null, okapiHeaders).processStatic(storageURL, false, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    new Processor(null, okapiHeaders).processStatic(storageURL, false, entity, asyncResultHandler, vertxContext);
   }
 
   @Override
@@ -281,6 +281,6 @@ public class LoaderAPI implements LoadResource {
   public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    new Processor(null, okapiHeaders).processStatic(null, true, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    new Processor(null, okapiHeaders).processStatic(null, true, entity, asyncResultHandler, vertxContext);
   }
 }

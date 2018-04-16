@@ -643,61 +643,12 @@ class Processor {
     }
   }
 
-  void processStatic(String url, boolean isTest, InputStream entity, Map<String, String> okapiHeaders,
-                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext){
+  void processStatic(String url, boolean isTest, InputStream entity, Handler<AsyncResult<Response>> asyncResultHandler,
+                     Context vertxContext){
+    this.url = url;
     vertxContext.owner().executeBlocking( block -> {
       try {
-        LOGGER.info("REQUEST ID " + UUID.randomUUID().toString());
-        tenantId = TenantTool.calculateTenantId(
-          okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
-
-        String content = IoUtil.toStringUtf8(entity);
-        JsonObject jobj = new JsonObject(content);
-        String error = validateStaticLoad(jobj, isTest);
-        StringBuilder importSQLStatementMethod = new StringBuilder();
-        boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
-        List<JsonObject> listOfRecords;
-
-        if(error != null){
-          block.fail(error);
-          return;
-        }
-
-        if(isArray){
-          listOfRecords = contentArray2list(jobj);
-        } else{
-          listOfRecords = contentObject2list(jobj);
-        }
-
-        if(listOfRecords.isEmpty()){
-          block.fail("No records to process...");
-          return;
-        }
-
-        if(!isTest){
-          importSQLStatementMethod
-            .append("COPY ")
-            .append(tenantId)
-            .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
-            .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
-            .append(System.lineSeparator());
-        }
-
-        for (JsonObject record : listOfRecords) {
-          appendRecordToImportSQLStatement(record, importSQLStatementMethod);
-        }
-
-        if(!isTest){
-          importSQLStatementMethod.append("\\.");
-          HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
-          if (response.getStatusLine().getStatusCode() != 200) {
-            String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
-            LOGGER.error(e);
-            block.fail(e);
-            return;
-          }
-        }
-        block.complete(importSQLStatementMethod);
+        processStaticBlock(block, entity, isTest);
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
         block.fail(e);
@@ -718,6 +669,64 @@ class Processor {
       }
       LOGGER.info("Completed processing of REQUEST");
     });
+  }
+
+  private void processStaticBlock(Future<Object> block, InputStream entity, boolean isTest)
+    throws IOException {
+
+    LOGGER.info("REQUEST ID " + UUID.randomUUID().toString());
+    tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
+    String content = IoUtil.toStringUtf8(entity);
+    JsonObject jobj = new JsonObject(content);
+    String error = validateStaticLoad(jobj, isTest);
+
+    if(error != null){
+      block.fail(error);
+      return;
+    }
+
+    StringBuilder importSQLStatementMethod = new StringBuilder();
+    boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
+    List<JsonObject> listOfRecords;
+
+    if(isArray){
+      listOfRecords = contentArray2list(jobj);
+    } else{
+      listOfRecords = contentObject2list(jobj);
+    }
+
+    if(listOfRecords.isEmpty()){
+      block.fail("No records to process...");
+      return;
+    }
+
+    appendStringsToSQLStatementIfNotTest(importSQLStatementMethod, jobj, isTest);
+
+    for (JsonObject record : listOfRecords) {
+      appendRecordToImportSQLStatement(record, importSQLStatementMethod);
+    }
+
+    if(!isTest){
+      importSQLStatementMethod.append("\\.");
+      HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
+      if (response.getStatusLine().getStatusCode() != 200) {
+        String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+        LOGGER.error(e);
+        block.fail(e);
+      }
+    }
+    block.complete(importSQLStatementMethod);
+  }
+
+  private void appendStringsToSQLStatementIfNotTest(StringBuilder importSQLStatementMethod, JsonObject jobj, boolean isTest) {
+    if(!isTest){
+      importSQLStatementMethod
+        .append("COPY ")
+        .append(tenantId)
+        .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
+        .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
+        .append(System.lineSeparator());
+    }
   }
 
   private void appendRecordToImportSQLStatement(JsonObject record, StringBuilder importSQLStatementMethod) {
