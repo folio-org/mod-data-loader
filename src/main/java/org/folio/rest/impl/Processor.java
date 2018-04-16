@@ -684,7 +684,7 @@ class Processor {
         }
 
         for (JsonObject record : listOfRecords) {
-          processStaticRecord(record, importSQLStatementMethod);
+          appendRecordToImportSQLStatement(record, importSQLStatementMethod);
         }
 
         if(!isTest){
@@ -720,7 +720,7 @@ class Processor {
     });
   }
 
-  private void processStaticRecord(JsonObject record, StringBuilder importSQLStatementMethod) {
+  private void appendRecordToImportSQLStatement(JsonObject record, StringBuilder importSQLStatementMethod) {
     String id = record.getString("id");
     if(id == null || "${randomUUID}".equals(id)){
       id = UUID.randomUUID().toString();
