@@ -682,17 +682,11 @@ class Processor {
             .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
             .append(System.lineSeparator());
         }
+
         for (JsonObject record : listOfRecords) {
-          //if an "id" exists in the template record, use that id
-          String id = record.getString("id");
-          if(id == null || "${randomUUID}".equals(id)){
-            //if there is no pre-populated "id" then generate one
-            id = UUID.randomUUID().toString();
-          }
-          String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
-          importSQLStatementMethod.append(id).append("|").append(persistRecord).append(
-            System.lineSeparator());
+          processStaticRecord(record, importSQLStatementMethod);
         }
+
         if(!isTest){
           importSQLStatementMethod.append("\\.");
           HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
@@ -724,6 +718,15 @@ class Processor {
       }
       LOGGER.info("Completed processing of REQUEST");
     });
+  }
+
+  private void processStaticRecord(JsonObject record, StringBuilder importSQLStatementMethod) {
+    String id = record.getString("id");
+    if(id == null || "${randomUUID}".equals(id)){
+      id = UUID.randomUUID().toString();
+    }
+    String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
+    importSQLStatementMethod.append(id).append("|").append(persistRecord).append(System.lineSeparator());
   }
 
   private String validateStaticLoad(JsonObject jobj, boolean isTest){
