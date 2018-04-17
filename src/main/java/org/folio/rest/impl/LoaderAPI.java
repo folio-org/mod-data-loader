@@ -42,7 +42,6 @@ public class LoaderAPI implements LoadResource {
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
   private int bulkSize = 50000;
-  private Processor processor = new Processor();
 
   @Override
   public void postLoadMarcRules(InputStream entity, Map<String, String> okapiHeaders,
@@ -103,7 +102,7 @@ public class LoaderAPI implements LoadResource {
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
     if(validRequest(asyncResultHandler, okapiHeaders)){
-      processor.process(true, entity, vertxContext, tenantId, asyncResultHandler, okapiHeaders, bulkSize);
+      new Processor(tenantId, okapiHeaders).process(true, entity, vertxContext, asyncResultHandler, bulkSize);
     }
   }
 
@@ -119,7 +118,7 @@ public class LoaderAPI implements LoadResource {
 
     this.bulkSize = bulkSize;
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
-    processor.setUrl(storageURL);
+    new Processor(tenantId, okapiHeaders).setUrl(storageURL);
     HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
     //check if inventory storage is responding
@@ -140,7 +139,7 @@ public class LoaderAPI implements LoadResource {
             PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
         }
         else{
-          processor.process(false, entity, vertxContext, tenantId, asyncResultHandler, okapiHeaders, bulkSize);
+          new Processor(tenantId, okapiHeaders).process(false, entity, vertxContext, asyncResultHandler, bulkSize);
         }
       } finally {
         client.closeClient();
@@ -268,7 +267,7 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
-    processor.processStatic(storageURL, false, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    new Processor(null, okapiHeaders).processStatic(storageURL, false, entity, asyncResultHandler, vertxContext);
   }
 
   @Override
@@ -282,6 +281,6 @@ public class LoaderAPI implements LoadResource {
   public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    processor.processStatic(null, true, entity, okapiHeaders, asyncResultHandler, vertxContext);
+    new Processor(null, okapiHeaders).processStatic(null, true, entity, asyncResultHandler, vertxContext);
   }
 }
