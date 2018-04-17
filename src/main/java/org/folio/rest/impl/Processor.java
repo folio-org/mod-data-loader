@@ -335,8 +335,8 @@ class Processor {
     }
   }
 
-  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done, Map<String,
-    String> okapiHeaders) throws JsonProcessingException {
+  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done,
+                                Map<String, String> okapiHeaders) throws JsonProcessingException {
 
     if(importSQLStatement.length() == 0 && record == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
@@ -713,7 +713,9 @@ class Processor {
     appendStringsToSQLStatementIfNotTest(importSQLStatementMethod, jobj, isTest);
 
     for (JsonObject record : listOfRecords) {
-      appendRecordToImportSQLStatement(record, importSQLStatementMethod);
+      String id = insertRandomUUID(record);
+      String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
+      importSQLStatementMethod.append(id).append("|").append(persistRecord).append(System.lineSeparator());
     }
 
     if(!isTest){
@@ -739,13 +741,12 @@ class Processor {
     }
   }
 
-  private void appendRecordToImportSQLStatement(JsonObject record, StringBuilder importSQLStatementMethod) {
+  private String insertRandomUUID(JsonObject record) {
     String id = record.getString("id");
     if(id == null || "${randomUUID}".equals(id)){
       id = UUID.randomUUID().toString();
     }
-    String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
-    importSQLStatementMethod.append(id).append("|").append(persistRecord).append(System.lineSeparator());
+    return id;
   }
 
   private String validateStaticLoad(JsonObject jobj, boolean isTest){

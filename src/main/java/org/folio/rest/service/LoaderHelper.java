@@ -50,12 +50,13 @@ public class LoaderHelper {
   }
 
   public static void closeInputStream(InputStream inputStream) {
-    if (inputStream != null) {
-      try {
-        inputStream.close();
-      } catch (IOException e) {
-        LOGGER.error(e.getMessage(), e);
-      }
+    if (inputStream == null) {
+      return;
+    }
+    try {
+      inputStream.close();
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage(), e);
     }
   }
 }
