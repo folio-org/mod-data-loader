@@ -22,6 +22,7 @@ import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.service.LoaderHelper;
+import org.folio.rest.service.ProcessorHelper;
 import org.folio.rest.struct.ProcessedCondition;
 import org.folio.rest.struct.ProcessedSingleItem;
 import org.folio.rest.tools.ClientGenerator;
@@ -480,11 +481,11 @@ class Processor {
       //for example:
       //          "type": "custom",
       //          "value": "DATA.replace(',' , ' ');"
-      String[] functions = condition.getString(TYPE).split(",");
+      String[] functions = ProcessorHelper.getFunctionsFromCondition(condition);
       isCustom = checkIfAnyFunctionIsCustom(functions, isCustom);
 
       ProcessedCondition pc =
-        processCondition(condition, data, originalData, leader, functions, conditionsMet, ruleConstVal, isCustom);
+        processCondition(condition, data, originalData, leader, conditionsMet, ruleConstVal, isCustom);
       data = pc.getData();
       conditionsMet = pc.isConditionsMet();
     }
@@ -500,7 +501,7 @@ class Processor {
   }
 
   private ProcessedCondition processCondition(JsonObject condition, String data, String originalData, Leader leader,
-                                              String[] functions, boolean conditionsMet, String ruleConstVal,
+                                              boolean conditionsMet, String ruleConstVal,
                                               boolean isCustom) {
 
     if(leader != null && condition.getBoolean("LDR") != null){
@@ -509,7 +510,7 @@ class Processor {
       data = leader.toString();
     }
     String valueParam = condition.getString(VALUE);
-    for (String function : functions) {
+    for (String function : ProcessorHelper.getFunctionsFromCondition(condition)) {
       if(CUSTOM.equals(function.trim())){
         try{
           data = (String)JSManager.runJScript(valueParam, data);
