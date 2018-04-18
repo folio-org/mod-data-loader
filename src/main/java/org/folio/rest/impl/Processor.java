@@ -23,7 +23,7 @@ import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.service.LoaderHelper;
 import org.folio.rest.service.ProcessorHelper;
-import org.folio.rest.struct.ProcessedCondition;
+import org.folio.rest.struct.ProcessedSinglePlusConditionCheck;
 import org.folio.rest.struct.ProcessedSingleItem;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -484,10 +484,10 @@ class Processor {
       String[] functions = ProcessorHelper.getFunctionsFromCondition(condition);
       isCustom = checkIfAnyFunctionIsCustom(functions, isCustom);
 
-      ProcessedCondition pc =
+      ProcessedSinglePlusConditionCheck processedCondition =
         processCondition(condition, data, originalData, leader, conditionsMet, ruleConstVal, isCustom);
-      data = pc.getData();
-      conditionsMet = pc.isConditionsMet();
+      data = processedCondition.getData();
+      conditionsMet = processedCondition.isConditionsMet();
     }
     if(conditionsMet && ruleConstVal != null && !isCustom){
       //all conditions of the rule were met, and there
@@ -500,9 +500,9 @@ class Processor {
     return new ProcessedSingleItem(data, false);
   }
 
-  private ProcessedCondition processCondition(JsonObject condition, String data, String originalData, Leader leader,
-                                              boolean conditionsMet, String ruleConstVal,
-                                              boolean isCustom) {
+  private ProcessedSinglePlusConditionCheck processCondition(JsonObject condition, String data, String originalData, Leader leader,
+                                                             boolean conditionsMet, String ruleConstVal,
+                                                             boolean isCustom) {
 
     if(leader != null && condition.getBoolean("LDR") != null){
       //the rule also has a condition on the leader field
@@ -511,40 +511,53 @@ class Processor {
     }
     String valueParam = condition.getString(VALUE);
     for (String function : ProcessorHelper.getFunctionsFromCondition(condition)) {
-      if(CUSTOM.equals(function.trim())){
-        try{
-          if (valueParam == null) {
-            throw new NullPointerException("valueParam == null");
-          }
-          data = (String)JSManager.runJScript(valueParam, data);
-        }
-        catch(Exception e){
-          //the function has thrown an exception meaning this condition has failed,
-          //hence this specific rule has failed
-          conditionsMet = false;
-          LOGGER.error(e.getMessage(), e);
-        }
-      }
-      else{
-        String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
-        if(valueParam != null && !c.equals(valueParam) && !isCustom){
-          //still allow a condition to compare the output of a function on the data to a constant value
-          //unless this is a custom javascript function in which case, the value holds the custom function
-          conditionsMet = false;
-          break;
-        }
-        else if (ruleConstVal == null){
-          //if there is no val to use as a replacement , then assume the function
-          //is doing generating the needed value and set the data to the returned value
-          data = c;
-        }
+      ProcessedSinglePlusConditionCheck processedFunction =  processFunction(function, data, isCustom, valueParam, condition,
+        conditionsMet, ruleConstVal);
+      conditionsMet = processedFunction.isConditionsMet();
+      data = processedFunction.getData();
+      if (processedFunction.doBreak()) {
+        break;
       }
     }
     if(!conditionsMet){
       //all conditions for this rule we not met, revert data to the originalData passed in.
-      return new ProcessedCondition(originalData, true, false);
+      return new ProcessedSinglePlusConditionCheck(originalData, true, false);
     }
-    return new ProcessedCondition(data, false, true);
+    return new ProcessedSinglePlusConditionCheck(data, false, true);
+  }
+
+  private ProcessedSinglePlusConditionCheck processFunction(String function, String data, boolean isCustom,
+                                                            String valueParam, JsonObject condition,
+                                                            boolean conditionsMet, String ruleConstVal) {
+
+    if(CUSTOM.equals(function.trim())){
+      try{
+        if (valueParam == null) {
+          throw new NullPointerException("valueParam == null");
+        }
+        data = (String)JSManager.runJScript(valueParam, data);
+      }
+      catch(Exception e){
+        //the function has thrown an exception meaning this condition has failed,
+        //hence this specific rule has failed
+        conditionsMet = false;
+        LOGGER.error(e.getMessage(), e);
+      }
+    }
+    else{
+      String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
+      if(valueParam != null && !c.equals(valueParam) && !isCustom){
+        //still allow a condition to compare the output of a function on the data to a constant value
+        //unless this is a custom javascript function in which case, the value holds the custom function
+        return new ProcessedSinglePlusConditionCheck(data, true, false);
+      }
+      else if (ruleConstVal == null){
+        //if there is no val to use as a replacement , then assume the function
+        //is doing generating the needed value and set the data to the returned value
+        data = c;
+      }
+    }
+    return new ProcessedSinglePlusConditionCheck(data, false, conditionsMet);
   }
 
   private boolean checkIfAnyFunctionIsCustom(String[] functions, boolean isCustom) {

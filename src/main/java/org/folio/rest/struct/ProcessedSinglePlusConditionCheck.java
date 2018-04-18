@@ -1,10 +1,10 @@
 package org.folio.rest.struct;
 
-public class ProcessedCondition extends ProcessedSingleItem {
+public class ProcessedSinglePlusConditionCheck extends ProcessedSingleItem {
 
   private boolean conditionsMet;
 
-  public ProcessedCondition(String data, boolean doBreak, boolean conditionsMet) {
+  public ProcessedSinglePlusConditionCheck(String data, boolean doBreak, boolean conditionsMet) {
     super(data, doBreak);
     this.conditionsMet = conditionsMet;
   }
