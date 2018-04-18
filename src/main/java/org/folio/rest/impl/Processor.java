@@ -513,6 +513,9 @@ class Processor {
     for (String function : ProcessorHelper.getFunctionsFromCondition(condition)) {
       if(CUSTOM.equals(function.trim())){
         try{
+          if (valueParam == null) {
+            throw new NullPointerException("valueParam == null");
+          }
           data = (String)JSManager.runJScript(valueParam, data);
         }
         catch(Exception e){
