@@ -22,7 +22,8 @@ import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.service.LoaderHelper;
-import org.folio.rest.struct.ProcessedRule;
+import org.folio.rest.struct.ProcessedCondition;
+import org.folio.rest.struct.ProcessedSingleItem;
 import org.folio.rest.tools.ClientGenerator;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.TenantTool;
@@ -429,16 +430,16 @@ class Processor {
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
     for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
-      ProcessedRule pr = processRule(rules.getJsonObject(ruleIndex), leader, data, originalData);
-      data = pr.getData();
-      if (pr.doBreak()) {
+      ProcessedSingleItem psi = processRule(rules.getJsonObject(ruleIndex), leader, data, originalData);
+      data = psi.getData();
+      if (psi.doBreak()) {
         break;
       }
     }
     return Escaper.escape(data);
   }
 
-  private ProcessedRule processRule(JsonObject rule, Leader leader, String data, String originalData) {
+  private ProcessedSingleItem processRule(JsonObject rule, Leader leader, String data, String originalData) {
 
 
     //get the conditions associated with each rule
@@ -480,57 +481,12 @@ class Processor {
       //          "type": "custom",
       //          "value": "DATA.replace(',' , ' ');"
       String[] functions = condition.getString(TYPE).split(",");
-      //we need to know if one of the functions is a custom function
-      //so that we know how to handle the value field - the custom indication
-      //may not be the first function listed in the function list
-      //a little wasteful, but this will probably only loop at most over 2 or 3 function names
-      for (String function : functions) {
-        if(CUSTOM.equals(function.trim())){
-          isCustom = true;
-          break;
-        }
-      }
+      isCustom = checkIfAnyFunctionIsCustom(functions, isCustom);
 
-      /*  start processing the condition  */
-
-      if(leader != null && condition.getBoolean("LDR") != null){
-        //the rule also has a condition on the leader field
-        //whose value also needs to be passed into any declared function
-        data = leader.toString();
-      }
-      String valueParam = condition.getString(VALUE);
-      for (String function : functions) {
-        if(CUSTOM.equals(function.trim())){
-          try{
-            data = (String)JSManager.runJScript(valueParam, data);
-          }
-          catch(Exception e){
-            //the function has thrown an exception meaning this condition has failed,
-            //hence this specific rule has failed
-            conditionsMet = false;
-            LOGGER.error(e.getMessage(), e);
-          }
-        }
-        else{
-          String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
-          if(valueParam != null && !c.equals(valueParam) && !isCustom){
-            //still allow a condition to compare the output of a function on the data to a constant value
-            //unless this is a custom javascript function in which case, the value holds the custom function
-            conditionsMet = false;
-            break;
-          }
-          else if (ruleConstVal == null){
-            //if there is no val to use as a replacement , then assume the function
-            //is doing generating the needed value and set the data to the returned value
-            data = c;
-          }
-        }
-      }
-      if(!conditionsMet){
-        //all conditions for this rule we not met, revert data to the originalData passed in.
-        data = originalData;
-        break;
-      }
+      ProcessedCondition pc =
+        processCondition(condition, data, originalData, leader, functions, conditionsMet, ruleConstVal, isCustom);
+      data = pc.getData();
+      conditionsMet = pc.isConditionsMet();
     }
     if(conditionsMet && ruleConstVal != null && !isCustom){
       //all conditions of the rule were met, and there
@@ -538,9 +494,67 @@ class Processor {
       //not a custom rule, then set the data to the const value
       //no need to continue processing other rules for this subfield
       data = ruleConstVal;
-      return new ProcessedRule(data, true);
+      return new ProcessedSingleItem(data, true);
     }
-    return new ProcessedRule(data, false);
+    return new ProcessedSingleItem(data, false);
+  }
+
+  private ProcessedCondition processCondition(JsonObject condition, String data, String originalData, Leader leader,
+                                              String[] functions, boolean conditionsMet, String ruleConstVal,
+                                              boolean isCustom) {
+
+    if(leader != null && condition.getBoolean("LDR") != null){
+      //the rule also has a condition on the leader field
+      //whose value also needs to be passed into any declared function
+      data = leader.toString();
+    }
+    String valueParam = condition.getString(VALUE);
+    for (String function : functions) {
+      if(CUSTOM.equals(function.trim())){
+        try{
+          data = (String)JSManager.runJScript(valueParam, data);
+        }
+        catch(Exception e){
+          //the function has thrown an exception meaning this condition has failed,
+          //hence this specific rule has failed
+          conditionsMet = false;
+          LOGGER.error(e.getMessage(), e);
+        }
+      }
+      else{
+        String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
+        if(valueParam != null && !c.equals(valueParam) && !isCustom){
+          //still allow a condition to compare the output of a function on the data to a constant value
+          //unless this is a custom javascript function in which case, the value holds the custom function
+          conditionsMet = false;
+          break;
+        }
+        else if (ruleConstVal == null){
+          //if there is no val to use as a replacement , then assume the function
+          //is doing generating the needed value and set the data to the returned value
+          data = c;
+        }
+      }
+    }
+    if(!conditionsMet){
+      //all conditions for this rule we not met, revert data to the originalData passed in.
+      return new ProcessedCondition(originalData, true, false);
+    }
+    return new ProcessedCondition(data, false, true);
+  }
+
+  private boolean checkIfAnyFunctionIsCustom(String[] functions, boolean isCustom) {
+    //we need to know if one of the functions is a custom function
+    //so that we know how to handle the value field - the custom indication
+    //may not be the first function listed in the function list
+    //a little wasteful, but this will probably only loop at most over 2 or 3 function names
+    for (String function : functions) {
+      if(CUSTOM.equals(function.trim())){
+        isCustom = true;
+        break;
+      }
+    }
+    return isCustom;
   }
 
   /**
