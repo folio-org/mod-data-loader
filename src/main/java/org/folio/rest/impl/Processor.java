@@ -211,7 +211,7 @@ class Processor {
     else{
       entityRequested = true;
     }
-    List<Object[]> obj = new ArrayList<>();
+    List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int z = 0; z < instanceField.size(); z++) {
       JsonObject jObj = instanceField.getJsonObject(z);
       JsonArray subFields = jObj.getJsonArray("subfield");
@@ -286,11 +286,11 @@ class Processor {
         String subfield = String.valueOf(sub1);
         if (subFieldsSet.contains(subfield)) {
           //rule file contains a rule for this subfield
-          if(obj.size() <= k){
+          if(arraysOfObjects.size() <= k){
             //temporarily save objects with multiple fields so that the fields of the
             //same object can be populated with data from different subfields
-            for (int l = obj.size(); l <= k; l++) {
-              obj.add(new Object[] { null });
+            for (int l = arraysOfObjects.size(); l <= k; l++) {
+              arraysOfObjects.add(new Object[] { null });
             }
           }
           if(!applyPost){
@@ -322,9 +322,9 @@ class Processor {
             sb.append(data);
           }
           if(entityRequestedPerRepeatedSubfield && entityRequested){
-            createNewComplexObj = obj.get(k)[0] == null;
+            createNewComplexObj = arraysOfObjects.get(k)[0] == null;
             String completeData = generateDataString(buffers2concat, separator[0]);
-            createNewObject(embeddedFields, object, completeData, createNewComplexObj, obj.get(k));
+            createNewObject(embeddedFields, object, completeData, createNewComplexObj, arraysOfObjects.get(k));
           }
         }
       }
