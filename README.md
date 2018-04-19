@@ -410,3 +410,15 @@ That will create three records:
 
 *Note* that the only validation occurring is the validation done on the DB layer (duplicate keys, etc.).
 
+## Additional information
+
+### Other documentation
+
+Other [modules](https://dev.folio.org/source-code/#server-side) are described,
+with further FOLIO Developer documentation at [dev.folio.org](https://dev.folio.org/)
+
+### Issue tracker
+
+See project [DIMPT](https://issues.folio.org/browse/DIMPT)
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
+
