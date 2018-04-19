@@ -247,25 +247,9 @@ class Processor {
       final List<StringBuilder> buffers2concat = new ArrayList<>();
       //separator between subfields with different delimiters
       String[] separator = new String[]{ null };
-      if(delimiters != null){
-        for (int j = 0; j < delimiters.size(); j++) {
-          JsonObject job = delimiters.getJsonObject(j);
-          String delimiter = job.getString(VALUE);
-          JsonArray subFieldswithDel = job.getJsonArray("subfields");
-          StringBuilder subFieldsStringBuilder = new StringBuilder();
-          buffers2concat.add(subFieldsStringBuilder);
-          if(subFieldswithDel.size() == 0){
-            separator[0] = delimiter;
-          }
-          for (int k = 0; k < subFieldswithDel.size(); k++) {
-            subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
-            subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuilder);
-          }
-        }
-      }
-      else{
-        buffers2concat.add(new StringBuilder());
-      }
+
+      handleDelimiters(delimiters, buffers2concat, separator, subField2Delimiter, subField2Data);
+
       String[] embeddedFields = jObj.getString("target").split("\\.");
       if (!isMappingValid(object, embeddedFields)) {
         LOGGER.debug("bad mapping " + jObj.encode());
@@ -346,6 +330,31 @@ class Processor {
       createNewComplexObj = true;
     }
     return createNewComplexObj;
+  }
+
+  private void handleDelimiters(JsonArray delimiters, List<StringBuilder> buffers2concat,
+                                             String[] separator, Map<String, String> subField2Delimiter,
+                                             Map<String, StringBuilder> subField2Data) {
+    if(delimiters != null){
+
+      for (int j = 0; j < delimiters.size(); j++) {
+        JsonObject job = delimiters.getJsonObject(j);
+        String delimiter = job.getString(VALUE);
+        JsonArray subFieldswithDel = job.getJsonArray("subfields");
+        StringBuilder subFieldsStringBuilder = new StringBuilder();
+        buffers2concat.add(subFieldsStringBuilder);
+        if(subFieldswithDel.size() == 0){
+          separator[0] = delimiter;
+        }
+        for (int k = 0; k < subFieldswithDel.size(); k++) {
+          subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
+          subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuilder);
+        }
+      }
+    }
+    else{
+      buffers2concat.add(new StringBuilder());
+    }
   }
 
   private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done,
