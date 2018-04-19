@@ -17,7 +17,7 @@ Exposes six APIs
 2.  GET `/load/marc-rules`
 3. POST `/load/marc-data?storageURL=http://localhost:8888` - posts the attached binary Marc file. This will convert the Marc records into instances and bulk load them into Postgres.
 4. POST `/load/marc-data/test` - normalizes the attached binary Marc file (should be small) and returns json instance object as the response to the API. Can be used to check mappings from Marc to instances. The file attached should be kept small so that there are no memory issues for the client (up to 500 entries)
-5. POST `/load/static?storageURL=http://localhost:8888` - posts static data (json template file) into the table specified in the template 
+5. POST `/load/static?storageURL=http://localhost:8888` - posts static data (json template file) into the table specified in the template
 6. POST `/load/static/test` - posts (but does not persist) static data, returning the actual records that would have been persisted in non-test mode
 
 The RAML can be found here:
@@ -266,7 +266,7 @@ an empty subfields array indicates that this will be used to separate values fro
 
 #### A single subfield into multiple subfields
 
-It is sometimes necessary to parse data in a single subfield and map the output into multiple subfields before processing. 
+It is sometimes necessary to parse data in a single subfield and map the output into multiple subfields before processing.
 For example:
 `041 $aitaspa`
 We may want to take this language field and convert it into two $a subfields before we begin processing. This can be achieved in the following manner:
@@ -292,7 +292,7 @@ We may want to take this language field and convert it into two $a subfields bef
           }
         ],
         "description": "",
-        "target": "languages"          
+        "target": "languages"
       }
 ...
 ```
@@ -301,7 +301,7 @@ Once pre-processing is complete, the regular rules / mappings will be applied - 
 
 There are currently 2 functions that can be called to parse the data within a single subfield
 
- **`split_every`** which receives a value indicating a hard split every n characters     
+ **`split_every`** which receives a value indicating a hard split every n characters
 ```
 "subFieldSplit": {
    "type": "split_every",
@@ -382,7 +382,7 @@ Will create five records and attempt to persist them into the `type` table:
 
  - The `${randomUUID}` indicates that the "id" field should be populated with a server generated UUID
  - The "values" field indicates which field name / values to use when generating the records
- 
+
 Example 2: (define an array with static ids)
 
 ```
@@ -395,13 +395,13 @@ Example 2: (define an array with static ids)
     [
       {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd","name":"Book"},
       {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc","name":"Journal"},
-      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}      
+      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}
     ]
   ,
   "type": "material_type"
 }
 
-``` 
+```
 
 Will create three records..
 ```
