@@ -7,7 +7,7 @@
     [
       {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd","name":"Book"},
       {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc","name":"Journal"},
-      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}      
+      {"id":"9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb","name":"Video"}
     ]
   ,
   "type": "material_type"
