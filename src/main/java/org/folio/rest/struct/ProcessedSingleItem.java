@@ -1,11 +1,11 @@
 package org.folio.rest.struct;
 
-public class ProcessedRule {
+public class ProcessedSingleItem {
 
   private String data;
   private boolean shouldBreak;
 
-  public ProcessedRule(String data, boolean doBreak) {
+  public ProcessedSingleItem(String data, boolean doBreak) {
     this.data = data;
     this.shouldBreak = doBreak;
   }
