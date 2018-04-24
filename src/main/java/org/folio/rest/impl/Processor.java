@@ -176,6 +176,7 @@ class Processor {
 
     //there is a mapping associated with this marc field
     for (int i = 0; i < mappingEntry.size(); i++) {
+
       //there could be multiple mapping entries, specifically different mappings
       //per subfield in the marc field
       JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
@@ -190,6 +191,7 @@ class Processor {
 
     //a single mapping entry can also map multiple subfields to a specific field in the instance
     JsonArray instanceField = subFieldMapping.getJsonArray("entity");
+
     //entity field indicates that the subfields within the entity definition should be
     //a single object, anything outside the entity definition will be placed in another
     //object of the same type, unless the target points to a different type.
@@ -197,11 +199,13 @@ class Processor {
     //with the subfields defined in a single entity grouped as a single object.
     //all definitions not enclosed within the entity will be associated with anothe single object
     boolean entityRequested = false;
+
     //for repeatable subfields, you can indicate that each repeated subfield should respect
     //the new object declaration and create a new object. so that if there are two "a" subfields
     //each one will create its own object
     boolean entityRequestedPerRepeatedSubfield =
       BooleanUtils.isTrue(subFieldMapping.getBoolean("entityPerRepeatedSubfield"));
+
     //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
     //will be placed in a single object of that type.
     if(instanceField == null){
@@ -215,11 +219,14 @@ class Processor {
     for (int z = 0; z < instanceField.size(); z++) {
       JsonObject jObj = instanceField.getJsonObject(z);
       JsonArray subFields = jObj.getJsonArray("subfield");
+
       //push into a set so that we can do a lookup for each subfield in the marc instead
       //of looping over the array
       Set<String> subFieldsSet = new HashSet<>(subFields.getList());
+
       //it can be a one to one mapping, or there could be rules to apply prior to the mapping
       JsonArray rules = jObj.getJsonArray("rules");
+
       //allow to declare a delimiter when concatenating subfields.
       //also allow , in a multi subfield field, to have some subfields with delimiter x and
       //some with delimiter y, and include a separator to separate each set of subfields
@@ -229,22 +236,28 @@ class Processor {
       //maintained in the buffers2concat list which is then iterated over and we place a separator
       //between the content of each string buffer reference's content
       JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
+
       //this is a map of each subfield to the delimiter to delimit it with
       final Map<String, String> subField2Delimiter = new HashMap<>();
+
       //should we run rules on each subfield value independently or on the entire concatenated
       //string, not relevant for non repeatable single subfield declarations or entity declarations
       //with only one non repeatable subfield
       boolean applyPost = false;
+
       if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
         applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
       }
+
       //map a subfield to a stringbuilder which will hold its content
       //since subfields can be concatenated into the same stringbuilder
       //the map of different subfields can map to the same stringbuilder reference
       final Map<String, StringBuilder> subField2Data = new HashMap<>();
+
       //keeps a reference to the stringbuilders that contain the data of the
       //subfield sets. this list is then iterated over and used to delimit subfield sets
       final List<StringBuilder> buffers2concat = new ArrayList<>();
+
       //separator between subfields with different delimiters
       String[] separator = new String[]{ null };
 
@@ -269,8 +282,10 @@ class Processor {
         char sub1 = subs.get(k).getCode();
         String subfield = String.valueOf(sub1);
         if (subFieldsSet.contains(subfield)) {
+
           //rule file contains a rule for this subfield
           if(arraysOfObjects.size() <= k){
+
             //temporarily save objects with multiple fields so that the fields of the
             //same object can be populated with data from different subfields
             for (int l = arraysOfObjects.size(); l <= k; l++) {
@@ -278,6 +293,7 @@ class Processor {
             }
           }
           if(!applyPost){
+
             //apply rule on the per subfield data. if applyPost is set to true, we need
             //to wait and run this after all the data associated with this target has been
             //concatenated , therefore this can only be done in the createNewObject function
@@ -421,14 +437,17 @@ class Processor {
 
     for (int i = 0; i < controlFieldRules.size(); i++) {
       JsonObject cfRule = controlFieldRules.getJsonObject(i);
+
       //get rules - each rule can contain multiple conditions that need to be met and a
       //value to inject in case all the conditions are met
       JsonArray rules = cfRule.getJsonArray("rules");
+
       //the content of the Marc control field
       String data = processRules(controlField.getData(), rules, leader);
       if ((data != null) && data.isEmpty()) {
         continue;
       }
+
       //if conditionsMet = true, then all conditions of a specific rule were met
       //and we can set the target to the rule's value
       String target = cfRule.getString("target");
@@ -448,6 +467,7 @@ class Processor {
     if(rules == null){
       return Escaper.escape(data);
     }
+
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
     for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
@@ -465,6 +485,7 @@ class Processor {
 
     //get the conditions associated with each rule
     JsonArray conditions = rule.getJsonArray("conditions");
+
     //get the constant value (if is was declared) to set the instance field to in case all
     //conditions are met for a rule, since there can be multiple rules
     //each with multiple conditions, a match of all conditions in a single rule
@@ -479,12 +500,15 @@ class Processor {
     //output of the function - see below for more on that
     String ruleConstVal = rule.getString(VALUE);
     boolean conditionsMet = true;
+
     //each rule has conditions, if they are all met, then mark
     //continue processing the next condition, if all conditions are met
     //set the target to the value of the rule
     boolean isCustom = false;
+
     for (int m = 0; m < conditions.size(); m++) {
       JsonObject condition = conditions.getJsonObject(m);
+
       //1..n functions can be declared within a condition (comma delimited).
       //for example:
       //  A condition with with one function, a parameter that will be passed to the
@@ -510,6 +534,7 @@ class Processor {
       conditionsMet = processedCondition.isConditionsMet();
     }
     if(conditionsMet && ruleConstVal != null && !isCustom){
+
       //all conditions of the rule were met, and there
       //is a constant value associated with the rule, and this is
       //not a custom rule, then set the data to the const value
@@ -525,6 +550,7 @@ class Processor {
                                                              boolean isCustom) {
 
     if(leader != null && condition.getBoolean("LDR") != null){
+
       //the rule also has a condition on the leader field
       //whose value also needs to be passed into any declared function
       data = leader.toString();
@@ -540,6 +566,7 @@ class Processor {
       }
     }
     if(!conditionsMet){
+
       //all conditions for this rule we not met, revert data to the originalData passed in.
       return new ProcessedSinglePlusConditionCheck(originalData, true, false);
     }
@@ -558,6 +585,7 @@ class Processor {
         data = (String)JSManager.runJScript(valueParam, data);
       }
       catch(Exception e){
+
         //the function has thrown an exception meaning this condition has failed,
         //hence this specific rule has failed
         conditionsMet = false;
@@ -567,11 +595,13 @@ class Processor {
     else{
       String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
       if(valueParam != null && !c.equals(valueParam) && !isCustom){
+
         //still allow a condition to compare the output of a function on the data to a constant value
         //unless this is a custom javascript function in which case, the value holds the custom function
         return new ProcessedSinglePlusConditionCheck(data, true, false);
       }
       else if (ruleConstVal == null){
+
         //if there is no val to use as a replacement , then assume the function
         //is doing generating the needed value and set the data to the returned value
         data = c;
@@ -581,6 +611,7 @@ class Processor {
   }
 
   private boolean checkIfAnyFunctionIsCustom(String[] functions, boolean isCustom) {
+
     //we need to know if one of the functions is a custom function
     //so that we know how to handle the value field - the custom indication
     //may not be the first function listed in the function list

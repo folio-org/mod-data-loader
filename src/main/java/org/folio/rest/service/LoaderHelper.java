@@ -25,6 +25,7 @@ public class LoaderHelper {
         return false;
       }
       type = field.getType();
+
       // this is a configuration error, the type is an object, but no fields are indicated
       // to be populated on that object. if you map a marc field to an object, it must be
       // something like - marc.identifier -> identifierObject.idField

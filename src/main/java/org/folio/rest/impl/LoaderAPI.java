@@ -199,6 +199,7 @@ public class LoaderAPI implements LoadResource {
             complexPreviouslyCreated[0] = object;
           }
         } else if (!isPrimitiveOrPrimitiveWrapperOrString(type)) {
+
           //currently not needed for instances, may be needed in the future
           //non primitive member in instance object but represented as a list or set of non
           //primitive objects
