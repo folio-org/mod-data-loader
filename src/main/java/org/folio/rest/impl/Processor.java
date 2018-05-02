@@ -323,11 +323,7 @@ class Processor {
       //rule file contains a rule for this subfield
       if(arraysOfObjects.size() <= subFieldsIndex){
 
-        //temporarily save objects with multiple fields so that the fields of the
-        //same object can be populated with data from different subfields
-        for (int l = arraysOfObjects.size(); l <= subFieldsIndex; l++) {
-          arraysOfObjects.add(new Object[] { null });
-        }
+        temporarilySaveObjectsWithMultipleFields(arraysOfObjects, subFieldsIndex);
       }
       if(!applyPost){
 
@@ -365,6 +361,15 @@ class Processor {
       }
     }
     return createNewComplexObj;
+  }
+
+  private void temporarilySaveObjectsWithMultipleFields(List<Object[]> arraysOfObjects, int subFieldsIndex) {
+    //temporarily save objects with multiple fields so that the fields of the
+    //same object can be populated with data from different subfields
+    for (int arraysOfObjectsIndex = arraysOfObjects.size(); arraysOfObjectsIndex <= subFieldsIndex;
+         arraysOfObjectsIndex++) {
+      arraysOfObjects.add(new Object[] { null });
+    }
   }
 
   private void handleDelimiters(JsonArray delimiters, List<StringBuilder> buffers2concat,
