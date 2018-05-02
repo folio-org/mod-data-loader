@@ -318,48 +318,51 @@ class Processor {
     String data = subFields.get(subFieldsIndex).getData();
     char sub1 = subFields.get(subFieldsIndex).getCode();
     String subfield = String.valueOf(sub1);
-    if (subFieldsSet.contains(subfield)) {
-
-      //rule file contains a rule for this subfield
-      if(arraysOfObjects.size() <= subFieldsIndex){
-
-        temporarilySaveObjectsWithMultipleFields(arraysOfObjects, subFieldsIndex);
-      }
-      if(!applyPost){
-
-        //apply rule on the per subfield data. if applyPost is set to true, we need
-        //to wait and run this after all the data associated with this target has been
-        //concatenated , therefore this can only be done in the createNewObject function
-        //which has the full set of subfield data
-        data = processRules(data, rules, leader);
-      }
-      if (delimiters != null) {
-        //delimiters is not null, meaning we have a string buffer for each set of subfields
-        //so populate the appropriate string buffer
-        if (subField2Data.get(String.valueOf(subfield)).length() > 0) {
-          subField2Data.get(String.valueOf(subfield)).append(subField2Delimiter.get(subfield));
-        }
-        subField2Data.get(subfield).append(data);
-      }
-      else {
-        StringBuilder sb = buffers2concat.get(0);
-        if(entityRequestedPerRepeatedSubfield){
-          //create a new value no matter what , since this use case
-          //indicates that repeated and non-repeated subfields will create a new entity
-          //so we should not concat values
-          sb.delete(0, sb.length());
-        }
-        if(sb.length() > 0){
-          sb.append(" ");
-        }
-        sb.append(data);
-      }
-      if(entityRequestedPerRepeatedSubfield && entityRequested){
-        createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
-        String completeData = generateDataString(buffers2concat, separator[0]);
-        createNewObject(embeddedFields, object, completeData, createNewComplexObj, arraysOfObjects.get(subFieldsIndex));
-      }
+    if (!subFieldsSet.contains(subfield)) {
+      return createNewComplexObj;
     }
+
+    //rule file contains a rule for this subfield
+    if(arraysOfObjects.size() <= subFieldsIndex){
+      temporarilySaveObjectsWithMultipleFields(arraysOfObjects, subFieldsIndex);
+    }
+
+    if(!applyPost){
+
+      //apply rule on the per subfield data. if applyPost is set to true, we need
+      //to wait and run this after all the data associated with this target has been
+      //concatenated , therefore this can only be done in the createNewObject function
+      //which has the full set of subfield data
+      data = processRules(data, rules, leader);
+    }
+
+    if (delimiters != null) {
+      //delimiters is not null, meaning we have a string buffer for each set of subfields
+      //so populate the appropriate string buffer
+      if (subField2Data.get(String.valueOf(subfield)).length() > 0) {
+        subField2Data.get(String.valueOf(subfield)).append(subField2Delimiter.get(subfield));
+      }
+      subField2Data.get(subfield).append(data);
+    } else {
+      StringBuilder sb = buffers2concat.get(0);
+      if(entityRequestedPerRepeatedSubfield){
+        //create a new value no matter what , since this use case
+        //indicates that repeated and non-repeated subfields will create a new entity
+        //so we should not concat values
+        sb.delete(0, sb.length());
+      }
+      if(sb.length() > 0){
+        sb.append(" ");
+      }
+      sb.append(data);
+    }
+
+    if(entityRequestedPerRepeatedSubfield && entityRequested){
+      createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
+      String completeData = generateDataString(buffers2concat, separator[0]);
+      createNewObject(embeddedFields, object, completeData, createNewComplexObj, arraysOfObjects.get(subFieldsIndex));
+    }
+
     return createNewComplexObj;
   }
 
