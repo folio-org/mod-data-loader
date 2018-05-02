@@ -216,88 +216,100 @@ class Processor {
       entityRequested = true;
     }
     List<Object[]> arraysOfObjects = new ArrayList<>();
-    for (int z = 0; z < instanceField.size(); z++) {
-      JsonObject jObj = instanceField.getJsonObject(z);
-      JsonArray subFieldsArray = jObj.getJsonArray("subfield");
+    for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
 
-      //push into a set so that we can do a lookup for each subfield in the marc instead
-      //of looping over the array
-      Set<String> subFieldsSet = new HashSet<>(subFieldsArray.getList());
+      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, object, leader, dataField,
+        entityRequested, entityRequestedPerRepeatedSubfield, createNewComplexObj, rememberComplexObj);
 
-      //it can be a one to one mapping, or there could be rules to apply prior to the mapping
-      JsonArray rules = jObj.getJsonArray("rules");
-
-      //allow to declare a delimiter when concatenating subfields.
-      //also allow , in a multi subfield field, to have some subfields with delimiter x and
-      //some with delimiter y, and include a separator to separate each set of subfields
-      //maintain a delimiter per subfield map - to lookup the correct delimiter and place it in string
-      //maintain a string buffer per subfield - but with the string buffer being a reference to the
-      //same stringbuilder for subfields with the same delimiter - the stringbuilder references are
-      //maintained in the buffers2concat list which is then iterated over and we place a separator
-      //between the content of each string buffer reference's content
-      JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
-
-      //this is a map of each subfield to the delimiter to delimit it with
-      final Map<String, String> subField2Delimiter = new HashMap<>();
-
-      //should we run rules on each subfield value independently or on the entire concatenated
-      //string, not relevant for non repeatable single subfield declarations or entity declarations
-      //with only one non repeatable subfield
-      boolean applyPost = false;
-
-      if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
-        applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
-      }
-
-      //map a subfield to a stringbuilder which will hold its content
-      //since subfields can be concatenated into the same stringbuilder
-      //the map of different subfields can map to the same stringbuilder reference
-      final Map<String, StringBuilder> subField2Data = new HashMap<>();
-
-      //keeps a reference to the stringbuilders that contain the data of the
-      //subfield sets. this list is then iterated over and used to delimit subfield sets
-      final List<StringBuilder> buffers2concat = new ArrayList<>();
-
-      //separator between subfields with different delimiters
-      String[] separator = new String[]{ null };
-
-      handleDelimiters(delimiters, buffers2concat, separator, subField2Delimiter, subField2Data);
-
-      String[] embeddedFields = jObj.getString("target").split("\\.");
-      if (!isMappingValid(object, embeddedFields)) {
-        LOGGER.debug("bad mapping " + jObj.encode());
-        continue;
-      }
-      //iterate over the subfields in the mapping entry
-      List<Subfield> subFields = dataField.getSubfields();
-      //check if we need to expand the subfields into additional subfields
-      JsonObject splitter = jObj.getJsonObject("subFieldSplit");
-      if(splitter != null){
-        expandSubfields(subFields, splitter);
-      }
-
-      for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
-        handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules, leader, delimiters, applyPost,
-          subField2Data, subField2Delimiter, buffers2concat, entityRequested, entityRequestedPerRepeatedSubfield,
-          embeddedFields, createNewComplexObj, object, separator);
-      }
-
-      if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
-        String completeData = generateDataString(buffers2concat, separator[0]);
-        if(applyPost){
-          completeData = processRules(completeData, rules, leader);
-        }
-        boolean created =
-          createNewObject(embeddedFields, object, completeData, createNewComplexObj, rememberComplexObj);
-        if(created){
-          createNewComplexObj = false;
-        }
-      }
-      ((Instance)object).setId(UUID.randomUUID().toString());
     }
     if(entityRequested){
       createNewComplexObj = true;
     }
+    return createNewComplexObj;
+  }
+
+  private boolean handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
+                                    Object object, Leader leader, DataField dataField, boolean entityRequested,
+                                    boolean entityRequestedPerRepeatedSubfield, boolean createNewComplexObj,
+                                    Object[] rememberComplexObj) throws ScriptException, IllegalAccessException, InstantiationException {
+
+    JsonObject jObj = instanceField.getJsonObject(instanceFieldIndex);
+    JsonArray subFieldsArray = jObj.getJsonArray("subfield");
+
+    //push into a set so that we can do a lookup for each subfield in the marc instead
+    //of looping over the array
+    Set<String> subFieldsSet = new HashSet<>(subFieldsArray.getList());
+
+    //it can be a one to one mapping, or there could be rules to apply prior to the mapping
+    JsonArray rules = jObj.getJsonArray("rules");
+
+    //allow to declare a delimiter when concatenating subfields.
+    //also allow , in a multi subfield field, to have some subfields with delimiter x and
+    //some with delimiter y, and include a separator to separate each set of subfields
+    //maintain a delimiter per subfield map - to lookup the correct delimiter and place it in string
+    //maintain a string buffer per subfield - but with the string buffer being a reference to the
+    //same stringbuilder for subfields with the same delimiter - the stringbuilder references are
+    //maintained in the buffers2concat list which is then iterated over and we place a separator
+    //between the content of each string buffer reference's content
+    JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
+
+    //this is a map of each subfield to the delimiter to delimit it with
+    final Map<String, String> subField2Delimiter = new HashMap<>();
+
+    //should we run rules on each subfield value independently or on the entire concatenated
+    //string, not relevant for non repeatable single subfield declarations or entity declarations
+    //with only one non repeatable subfield
+    boolean applyPost = false;
+
+    if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
+      applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
+    }
+
+    //map a subfield to a stringbuilder which will hold its content
+    //since subfields can be concatenated into the same stringbuilder
+    //the map of different subfields can map to the same stringbuilder reference
+    final Map<String, StringBuilder> subField2Data = new HashMap<>();
+
+    //keeps a reference to the stringbuilders that contain the data of the
+    //subfield sets. this list is then iterated over and used to delimit subfield sets
+    final List<StringBuilder> buffers2concat = new ArrayList<>();
+
+    //separator between subfields with different delimiters
+    String[] separator = new String[]{ null };
+
+    handleDelimiters(delimiters, buffers2concat, separator, subField2Delimiter, subField2Data);
+
+    String[] embeddedFields = jObj.getString("target").split("\\.");
+    if (!isMappingValid(object, embeddedFields)) {
+      LOGGER.debug("bad mapping " + jObj.encode());
+      return createNewComplexObj;
+    }
+    //iterate over the subfields in the mapping entry
+    List<Subfield> subFields = dataField.getSubfields();
+    //check if we need to expand the subfields into additional subfields
+    JsonObject splitter = jObj.getJsonObject("subFieldSplit");
+    if(splitter != null){
+      expandSubfields(subFields, splitter);
+    }
+
+    for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
+      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules, leader,
+        delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
+        entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, object, separator);
+    }
+
+    if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
+      String completeData = generateDataString(buffers2concat, separator[0]);
+      if(applyPost){
+        completeData = processRules(completeData, rules, leader);
+      }
+      boolean created =
+        createNewObject(embeddedFields, object, completeData, createNewComplexObj, rememberComplexObj);
+      if(created){
+        createNewComplexObj = false;
+      }
+    }
+    ((Instance)object).setId(UUID.randomUUID().toString());
     return createNewComplexObj;
   }
 
