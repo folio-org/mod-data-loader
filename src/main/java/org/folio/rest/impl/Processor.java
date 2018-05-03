@@ -74,6 +74,7 @@ class Processor {
   private boolean entityRequested;
   private boolean entityRequestedPerRepeatedSubfield;
   private final List<StringBuilder> buffers2concat = new ArrayList<>();
+  private final Map<String, StringBuilder> subField2Data = new HashMap<>();
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -272,13 +273,13 @@ class Processor {
     //map a subfield to a stringbuilder which will hold its content
     //since subfields can be concatenated into the same stringbuilder
     //the map of different subfields can map to the same stringbuilder reference
-    final Map<String, StringBuilder> subField2Data = new HashMap<>();
+    subField2Data.clear();
 
     //keeps a reference to the stringbuilders that contain the data of the
     //subfield sets. this list is then iterated over and used to delimit subfield sets
     buffers2concat.clear();
 
-    handleDelimiters(subField2Delimiter, subField2Data);
+    handleDelimiters(subField2Delimiter);
 
     String[] embeddedFields = jObj.getString("target").split("\\.");
     if (!isMappingValid(object, embeddedFields)) {
@@ -295,7 +296,7 @@ class Processor {
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
-        applyPost, subField2Data, subField2Delimiter,
+        applyPost, subField2Delimiter,
         embeddedFields);
     }
 
@@ -314,7 +315,7 @@ class Processor {
 
   private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
                                   List<Object[]> arraysOfObjects,
-                                  boolean applyPost, Map<String, StringBuilder> subField2Data,
+                                  boolean applyPost,
                                   Map<String, String> subField2Delimiter,
                                   String[] embeddedFields) {
 
@@ -376,7 +377,7 @@ class Processor {
     }
   }
 
-  private void handleDelimiters(Map<String, String> subField2Delimiter, Map<String, StringBuilder> subField2Data) {
+  private void handleDelimiters(Map<String, String> subField2Delimiter) {
     if(delimiters != null){
 
       for (int j = 0; j < delimiters.size(); j++) {
