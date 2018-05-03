@@ -65,6 +65,8 @@ class Processor {
   private Map<String, String> okapiHeaders;
   private String url;
 
+  private Leader leader;
+
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
   private static final int SO_TIMEOUT = 180 * 1000; //during data flow, if interrupted for 180sec, regard connection as
@@ -139,18 +141,17 @@ class Processor {
       processedCount++;
       List<DataField> df;
       List<ControlField> cf;
-      Leader[] leader = new Leader[]{null};
       Record record = reader.next();
       df = record.getDataFields();
       cf = record.getControlFields();
-      leader[0] = record.getLeader();
+      leader = record.getLeader();
       Iterator<ControlField> ctrlIter = cf.iterator();
       Iterator<DataField> dfIter = df.iterator();
       Object object = new Instance();
-      processMarcControlSection(ctrlIter, leader[0], object, rulesFile);
+      processMarcControlSection(ctrlIter, object, rulesFile);
 
       while (dfIter.hasNext()) {
-        handleMarcRecordFieldByField(dfIter, object, leader[0]);
+        handleMarcRecordFieldByField(dfIter, object);
       }
 
       String error = managePushToDB(isTest, tenantId, object, false, okapiHeaders);
@@ -163,7 +164,7 @@ class Processor {
     }
   }
 
-  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter, Object object, Leader leader)
+  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter, Object object)
     throws ScriptException, IllegalAccessException, InstantiationException {
 
     boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
@@ -181,11 +182,11 @@ class Processor {
       //per subfield in the marc field
       JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
       createNewComplexObj =
-        processSubFieldMapping(subFieldMapping, object, leader, createNewComplexObj, rememberComplexObj, dataField);
+        processSubFieldMapping(subFieldMapping, object, createNewComplexObj, rememberComplexObj, dataField);
     }
   }
 
-  private boolean processSubFieldMapping(JsonObject subFieldMapping, Object object, Leader leader,
+  private boolean processSubFieldMapping(JsonObject subFieldMapping, Object object,
                                       boolean createNewComplexObj, Object[] rememberComplexObj, DataField dataField)
     throws IllegalAccessException, InstantiationException, ScriptException {
 
@@ -218,7 +219,7 @@ class Processor {
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
 
-      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, object, leader, dataField,
+      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, object, dataField,
         entityRequested, entityRequestedPerRepeatedSubfield, createNewComplexObj, rememberComplexObj);
 
     }
@@ -229,7 +230,7 @@ class Processor {
   }
 
   private boolean handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
-                                    Object object, Leader leader, DataField dataField, boolean entityRequested,
+                                    Object object, DataField dataField, boolean entityRequested,
                                     boolean entityRequestedPerRepeatedSubfield, boolean createNewComplexObj,
                                     Object[] rememberComplexObj) throws ScriptException, IllegalAccessException, InstantiationException {
 
@@ -293,7 +294,7 @@ class Processor {
     }
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
-      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules, leader,
+      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules,
         delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
         entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, object, separator);
     }
@@ -301,7 +302,7 @@ class Processor {
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
       String completeData = generateDataString(buffers2concat, separator[0]);
       if(applyPost){
-        completeData = processRules(completeData, rules, leader);
+        completeData = processRules(completeData, rules);
       }
       boolean created =
         createNewObject(embeddedFields, object, completeData, createNewComplexObj, rememberComplexObj);
@@ -313,7 +314,13 @@ class Processor {
     return createNewComplexObj;
   }
 
-  private boolean handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet, List<Object[]> arraysOfObjects, JsonArray rules, Leader leader, JsonArray delimiters, boolean applyPost, Map<String, StringBuilder> subField2Data, Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat, boolean entityRequested, boolean entityRequestedPerRepeatedSubfield, String[] embeddedFields, boolean createNewComplexObj, Object object, String[] separator) {
+  private boolean handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
+                                  List<Object[]> arraysOfObjects, JsonArray rules, JsonArray delimiters,
+                                  boolean applyPost, Map<String, StringBuilder> subField2Data,
+                                  Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
+                                  boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
+                                  String[] embeddedFields, boolean createNewComplexObj, Object object,
+                                  String[] separator) {
 
     String data = subFields.get(subFieldsIndex).getData();
     char sub1 = subFields.get(subFieldsIndex).getCode();
@@ -333,7 +340,7 @@ class Processor {
       //to wait and run this after all the data associated with this target has been
       //concatenated , therefore this can only be done in the createNewObject function
       //which has the full set of subfield data
-      data = processRules(data, rules, leader);
+      data = processRules(data, rules);
     }
 
     if (delimiters != null) {
@@ -441,7 +448,7 @@ class Processor {
     return null;
   }
 
-  private void processMarcControlSection(Iterator<ControlField> ctrlIter, Leader leader, Object object, JsonObject rulesFile)
+  private void processMarcControlSection(Iterator<ControlField> ctrlIter, Object object, JsonObject rulesFile)
     throws IllegalAccessException, InstantiationException {
     //iterate over all the control fields in the marc record
     //for each control field , check if there is a rule for mapping that field in the rule file
@@ -450,12 +457,12 @@ class Processor {
       //get entry for this control field in the rules.json file
       JsonArray controlFieldRules = rulesFile.getJsonArray(controlField.getTag());
       if (controlFieldRules != null) {
-        handleControlFieldRules(controlFieldRules, controlField, leader, object);
+        handleControlFieldRules(controlFieldRules, controlField, object);
       }
     }
   }
 
-  private void handleControlFieldRules(JsonArray controlFieldRules, ControlField controlField, Leader leader,
+  private void handleControlFieldRules(JsonArray controlFieldRules, ControlField controlField,
                                        Object object) throws IllegalAccessException, InstantiationException {
     //when populating an object with multiple fields from the same marc field
     //this is used to pass the reference of the previously created object to the buildObject function
@@ -470,7 +477,7 @@ class Processor {
       JsonArray rules = cfRule.getJsonArray("rules");
 
       //the content of the Marc control field
-      String data = processRules(controlField.getData(), rules, leader);
+      String data = processRules(controlField.getData(), rules);
       if ((data != null) && data.isEmpty()) {
         continue;
       }
@@ -490,7 +497,7 @@ class Processor {
     }
   }
 
-  private String processRules(String data, JsonArray rules, Leader leader){
+  private String processRules(String data, JsonArray rules){
     if(rules == null){
       return Escaper.escape(data);
     }
@@ -498,7 +505,7 @@ class Processor {
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
     for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
-      ProcessedSingleItem psi = processRule(rules.getJsonObject(ruleIndex), leader, data, originalData);
+      ProcessedSingleItem psi = processRule(rules.getJsonObject(ruleIndex), data, originalData);
       data = psi.getData();
       if (psi.doBreak()) {
         break;
@@ -507,7 +514,7 @@ class Processor {
     return Escaper.escape(data);
   }
 
-  private ProcessedSingleItem processRule(JsonObject rule, Leader leader, String data, String originalData) {
+  private ProcessedSingleItem processRule(JsonObject rule, String data, String originalData) {
 
 
     //get the conditions associated with each rule
@@ -556,7 +563,7 @@ class Processor {
       isCustom = checkIfAnyFunctionIsCustom(functions, isCustom);
 
       ProcessedSinglePlusConditionCheck processedCondition =
-        processCondition(condition, data, originalData, leader, conditionsMet, ruleConstVal, isCustom);
+        processCondition(condition, data, originalData, conditionsMet, ruleConstVal, isCustom);
       data = processedCondition.getData();
       conditionsMet = processedCondition.isConditionsMet();
     }
@@ -572,7 +579,7 @@ class Processor {
     return new ProcessedSingleItem(data, false);
   }
 
-  private ProcessedSinglePlusConditionCheck processCondition(JsonObject condition, String data, String originalData, Leader leader,
+  private ProcessedSinglePlusConditionCheck processCondition(JsonObject condition, String data, String originalData,
                                                              boolean conditionsMet, String ruleConstVal,
                                                              boolean isCustom) {
 
