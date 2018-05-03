@@ -819,7 +819,9 @@ class Processor {
       return;
     }
 
-    appendStringsToSQLStatementIfNotTest(importSQLStatementMethod, jobj);
+    if (!isTest) {
+      appendStringsToSQLStatement(importSQLStatementMethod, jobj);
+    }
 
     for (JsonObject record : listOfRecords) {
       String id = insertRandomUUID(record);
@@ -839,15 +841,13 @@ class Processor {
     block.complete(importSQLStatementMethod);
   }
 
-  private void appendStringsToSQLStatementIfNotTest(StringBuilder importSQLStatementMethod, JsonObject jobj) {
-    if(!isTest){
-      importSQLStatementMethod
-        .append("COPY ")
-        .append(tenantId)
-        .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
-        .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
-        .append(System.lineSeparator());
-    }
+  private void appendStringsToSQLStatement(StringBuilder importSQLStatementMethod, JsonObject jobj) {
+    importSQLStatementMethod
+      .append("COPY ")
+      .append(tenantId)
+      .append("_mod_inventory_storage.").append(jobj.getString(TYPE))
+      .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
+      .append(System.lineSeparator());
   }
 
   private String insertRandomUUID(JsonObject record) {
