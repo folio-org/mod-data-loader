@@ -67,6 +67,7 @@ class Processor {
 
   private Leader leader;
   private Object object;
+  private JsonArray rules;
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -243,7 +244,7 @@ class Processor {
     Set<String> subFieldsSet = new HashSet<>(subFieldsArray.getList());
 
     //it can be a one to one mapping, or there could be rules to apply prior to the mapping
-    JsonArray rules = jObj.getJsonArray("rules");
+    rules = jObj.getJsonArray("rules");
 
     //allow to declare a delimiter when concatenating subfields.
     //also allow , in a multi subfield field, to have some subfields with delimiter x and
@@ -295,7 +296,7 @@ class Processor {
     }
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
-      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules,
+      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
         delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
         entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, separator);
     }
@@ -303,7 +304,7 @@ class Processor {
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
       String completeData = generateDataString(buffers2concat, separator[0]);
       if(applyPost){
-        completeData = processRules(completeData, rules);
+        completeData = processRules(completeData);
       }
       boolean created =
         createNewObject(embeddedFields, completeData, createNewComplexObj, rememberComplexObj);
@@ -316,7 +317,7 @@ class Processor {
   }
 
   private boolean handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
-                                  List<Object[]> arraysOfObjects, JsonArray rules, JsonArray delimiters,
+                                  List<Object[]> arraysOfObjects, JsonArray delimiters,
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
                                   boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
@@ -341,7 +342,7 @@ class Processor {
       //to wait and run this after all the data associated with this target has been
       //concatenated , therefore this can only be done in the createNewObject function
       //which has the full set of subfield data
-      data = processRules(data, rules);
+      data = processRules(data);
     }
 
     if (delimiters != null) {
@@ -478,10 +479,10 @@ class Processor {
 
       //get rules - each rule can contain multiple conditions that need to be met and a
       //value to inject in case all the conditions are met
-      JsonArray rules = cfRule.getJsonArray("rules");
+      rules = cfRule.getJsonArray("rules");
 
       //the content of the Marc control field
-      String data = processRules(controlField.getData(), rules);
+      String data = processRules(controlField.getData());
       if ((data != null) && data.isEmpty()) {
         continue;
       }
@@ -501,7 +502,7 @@ class Processor {
     }
   }
 
-  private String processRules(String data, JsonArray rules){
+  private String processRules(String data){
     if(rules == null){
       return Escaper.escape(data);
     }
@@ -667,7 +668,6 @@ class Processor {
    * create the need part of the instance object based on the target and the string containing the
    * content per subfield sets
    * @param embeddedFields - the targer
-   * @param object - the instance object
    * @param createNewComplexObj - whether to create a new object within the instance object - for example,
    * a new classification object, or set a value for a field in an existing object
    * @param rememberComplexObj - the current object within the instance object we are currently populating
