@@ -64,6 +64,7 @@ class Processor {
   private String tenantId;
   private Map<String, String> okapiHeaders;
   private String url;
+  private boolean isTest;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -95,6 +96,7 @@ class Processor {
   void process(boolean isTest, InputStream entity, Context vertxContext,
                        Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
 
+    this.isTest = isTest;
     this.bulkSize = bulkSize;
     long start = System.currentTimeMillis();
 
@@ -106,10 +108,10 @@ class Processor {
         StringBuilder unprocessed = new StringBuilder();
 
         while (reader.hasNext()) {
-          processSingleEntry(reader, isTest, block, unprocessed);
+          processSingleEntry(reader, block, unprocessed);
         }
 
-        String error = managePushToDB(isTest, tenantId, true, okapiHeaders);
+        String error = managePushToDB(tenantId, true, okapiHeaders);
         if(error != null){
           block.fail(new Exception(error));
           return;
@@ -144,8 +146,7 @@ class Processor {
     });
   }
 
-  private void processSingleEntry(MarcStreamReader reader, boolean isTest,
-                                  Future<Object> block, StringBuilder unprocessed) {
+  private void processSingleEntry(MarcStreamReader reader, Future<Object> block, StringBuilder unprocessed) {
 
     try {
       processedCount++;
@@ -164,7 +165,7 @@ class Processor {
         handleMarcRecordFieldByField(dfIter);
       }
 
-      String error = managePushToDB(isTest, tenantId, false, okapiHeaders);
+      String error = managePushToDB(tenantId, false, okapiHeaders);
       if(error != null){
         block.fail(new Exception(error));
       }
@@ -400,7 +401,7 @@ class Processor {
     }
   }
 
-  private String managePushToDB(boolean isTest, String tenantId, boolean done,
+  private String managePushToDB(String tenantId, boolean done,
                                 Map<String, String> okapiHeaders) throws JsonProcessingException {
 
     Object record = object;
@@ -762,10 +763,11 @@ class Processor {
 
   void processStatic(String url, boolean isTest, InputStream entity, Handler<AsyncResult<Response>> asyncResultHandler,
                      Context vertxContext){
+    this.isTest = isTest;
     this.url = url;
     vertxContext.owner().executeBlocking( block -> {
       try {
-        processStaticBlock(block, entity, isTest);
+        processStaticBlock(block, entity);
       } catch (Exception e) {
         LOGGER.error(e.getMessage(), e);
         block.fail(e);
@@ -788,14 +790,14 @@ class Processor {
     });
   }
 
-  private void processStaticBlock(Future<Object> block, InputStream entity, boolean isTest)
+  private void processStaticBlock(Future<Object> block, InputStream entity)
     throws IOException {
 
     LOGGER.info("REQUEST ID " + UUID.randomUUID().toString());
     tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
     String content = IoUtil.toStringUtf8(entity);
     JsonObject jobj = new JsonObject(content);
-    String error = validateStaticLoad(jobj, isTest);
+    String error = validateStaticLoad(jobj);
 
     if(error != null){
       block.fail(error);
@@ -817,7 +819,7 @@ class Processor {
       return;
     }
 
-    appendStringsToSQLStatementIfNotTest(importSQLStatementMethod, jobj, isTest);
+    appendStringsToSQLStatementIfNotTest(importSQLStatementMethod, jobj);
 
     for (JsonObject record : listOfRecords) {
       String id = insertRandomUUID(record);
@@ -837,7 +839,7 @@ class Processor {
     block.complete(importSQLStatementMethod);
   }
 
-  private void appendStringsToSQLStatementIfNotTest(StringBuilder importSQLStatementMethod, JsonObject jobj, boolean isTest) {
+  private void appendStringsToSQLStatementIfNotTest(StringBuilder importSQLStatementMethod, JsonObject jobj) {
     if(!isTest){
       importSQLStatementMethod
         .append("COPY ")
@@ -856,7 +858,7 @@ class Processor {
     return id;
   }
 
-  private String validateStaticLoad(JsonObject jobj, boolean isTest){
+  private String validateStaticLoad(JsonObject jobj){
     String table = jobj.getString(TYPE);
     JsonObject record = jobj.getJsonObject(RECORD);
     Object values = jobj.getValue(VALUES);
