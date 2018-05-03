@@ -67,6 +67,7 @@ class Processor {
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
+  private JsonArray delimiters;
   private Object object;
   private JsonArray rules;
   private boolean createNewComplexObj;
@@ -253,7 +254,7 @@ class Processor {
     //same stringbuilder for subfields with the same delimiter - the stringbuilder references are
     //maintained in the buffers2concat list which is then iterated over and we place a separator
     //between the content of each string buffer reference's content
-    JsonArray delimiters = jObj.getJsonArray("subFieldDelimiter");
+    delimiters = jObj.getJsonArray("subFieldDelimiter");
 
     //this is a map of each subfield to the delimiter to delimit it with
     final Map<String, String> subField2Delimiter = new HashMap<>();
@@ -276,7 +277,7 @@ class Processor {
     //subfield sets. this list is then iterated over and used to delimit subfield sets
     final List<StringBuilder> buffers2concat = new ArrayList<>();
 
-    handleDelimiters(delimiters, buffers2concat, subField2Delimiter, subField2Data);
+    handleDelimiters(buffers2concat, subField2Delimiter, subField2Data);
 
     String[] embeddedFields = jObj.getString("target").split("\\.");
     if (!isMappingValid(object, embeddedFields)) {
@@ -293,7 +294,7 @@ class Processor {
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
-        delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
+        applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
         entityRequestedPerRepeatedSubfield, embeddedFields);
     }
 
@@ -311,7 +312,7 @@ class Processor {
   }
 
   private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
-                                  List<Object[]> arraysOfObjects, JsonArray delimiters,
+                                  List<Object[]> arraysOfObjects,
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
                                   boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
@@ -375,7 +376,7 @@ class Processor {
     }
   }
 
-  private void handleDelimiters(JsonArray delimiters, List<StringBuilder> buffers2concat,
+  private void handleDelimiters(List<StringBuilder> buffers2concat,
                                              Map<String, String> subField2Delimiter,
                                              Map<String, StringBuilder> subField2Data) {
     if(delimiters != null){
