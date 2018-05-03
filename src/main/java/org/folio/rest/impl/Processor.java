@@ -104,6 +104,7 @@ class Processor {
 
       LOGGER.info("REQUEST ID " + UUID.randomUUID().toString());
       try {
+
         final MarcStreamReader reader = new MarcStreamReader(entity);
         StringBuilder unprocessed = new StringBuilder();
 
@@ -112,36 +113,36 @@ class Processor {
         }
 
         String error = managePushToDB(tenantId, true, okapiHeaders);
+
         if(error != null){
           block.fail(new Exception(error));
           return;
         }
+
         long end = System.currentTimeMillis();
         LOGGER.info("inserted " + processedCount + " in " + (end - start)/1000 + " seconds" );
         block.complete("Received count: " + processedCount + "\nerrors: " + unprocessed.toString());
-      }
-      catch(Exception e){
+
+      } catch(Exception e){
         block.fail(e);
-      }
-      finally {
+      } finally {
         LoaderHelper.closeInputStream(entity);
       }
     }, false, whenDone -> {
-      if(whenDone.succeeded()){
-        if(isTest){
+      if (whenDone.succeeded()) {
+        if (isTest) {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             LoadResource.PostLoadMarcDataTestResponse.withPlainCreated(importSQLStatement.toString())));
-        }else{
+        } else {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             LoadResource.PostLoadMarcDataResponse.withCreated(whenDone.result().toString())));
         }
         LOGGER.info("Completed processing of REQUEST");
-      }
-      else{
+      } else {
         LOGGER.error(whenDone.cause().getMessage(), whenDone.cause());
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          LoadResource.PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing record #" + processedCount +
-            ". " + whenDone.cause().getMessage())));
+          LoadResource.PostLoadMarcDataResponse.withPlainInternalServerError("stopped while processing record #" +
+            processedCount + ". " + whenDone.cause().getMessage())));
       }
     });
   }
@@ -166,7 +167,7 @@ class Processor {
       }
 
       String error = managePushToDB(tenantId, false, okapiHeaders);
-      if(error != null){
+      if (error != null) {
         block.fail(new Exception(error));
       }
     } catch (Exception e) {
@@ -175,8 +176,8 @@ class Processor {
     }
   }
 
-  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter)
-    throws ScriptException, IllegalAccessException, InstantiationException {
+  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter) throws ScriptException, IllegalAccessException,
+    InstantiationException {
 
     createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
     Object[] rememberComplexObj = new Object[] { null };
@@ -187,11 +188,11 @@ class Processor {
     }
 
     //there is a mapping associated with this marc field
-    for (int i = 0; i < mappingEntry.size(); i++) {
+    for (int mappingEntryIndex = 0; mappingEntryIndex < mappingEntry.size(); mappingEntryIndex++) {
 
       //there could be multiple mapping entries, specifically different mappings
       //per subfield in the marc field
-      JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
+      JsonObject subFieldMapping = mappingEntry.getJsonObject(mappingEntryIndex);
       processSubFieldMapping(subFieldMapping, rememberComplexObj, dataField);
     }
   }
@@ -213,25 +214,24 @@ class Processor {
     //for repeatable subfields, you can indicate that each repeated subfield should respect
     //the new object declaration and create a new object. so that if there are two "a" subfields
     //each one will create its own object
-    entityRequestedPerRepeatedSubfield =
-      BooleanUtils.isTrue(subFieldMapping.getBoolean("entityPerRepeatedSubfield"));
+    entityRequestedPerRepeatedSubfield = BooleanUtils.isTrue(subFieldMapping.getBoolean(
+      "entityPerRepeatedSubfield"));
 
     //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
     //will be placed in a single object of that type.
-    if(instanceField == null){
+    if (instanceField == null) {
       instanceField = new JsonArray();
       instanceField.add(subFieldMapping);
-    }
-    else{
+    } else {
       entityRequested = true;
     }
+
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
-
       handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField, rememberComplexObj);
-
     }
-    if(entityRequested){
+
+    if (entityRequested) {
       createNewComplexObj = true;
     }
   }
@@ -268,7 +268,7 @@ class Processor {
     //with only one non repeatable subfield
     boolean applyPost = false;
 
-    if(jObj.getBoolean("applyRulesOnConcatenatedData") != null){
+    if (jObj.getBoolean("applyRulesOnConcatenatedData") != null) {
       applyPost = jObj.getBoolean("applyRulesOnConcatenatedData");
     }
 
@@ -288,11 +288,13 @@ class Processor {
       LOGGER.debug("bad mapping " + jObj.encode());
       return;
     }
+
     //iterate over the subfields in the mapping entry
     List<Subfield> subFields = dataField.getSubfields();
+
     //check if we need to expand the subfields into additional subfields
     JsonObject splitter = jObj.getJsonObject("subFieldSplit");
-    if(splitter != null){
+    if (splitter != null) {
       expandSubfields(subFields, splitter);
     }
 
@@ -302,13 +304,13 @@ class Processor {
         embeddedFields);
     }
 
-    if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
+    if (!(entityRequestedPerRepeatedSubfield && entityRequested)) {
 
       String completeData = generateDataString();
-      if(applyPost){
+      if (applyPost) {
         completeData = processRules(completeData);
       }
-      if(createNewObject(embeddedFields, completeData, rememberComplexObj)){
+      if (createNewObject(embeddedFields, completeData, rememberComplexObj)) {
         createNewComplexObj = false;
       }
     }
@@ -316,9 +318,7 @@ class Processor {
   }
 
   private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
-                                  List<Object[]> arraysOfObjects,
-                                  boolean applyPost,
-                                  String[] embeddedFields) {
+                               List<Object[]> arraysOfObjects, boolean applyPost, String[] embeddedFields) {
 
     String data = subFields.get(subFieldsIndex).getData();
     char sub1 = subFields.get(subFieldsIndex).getCode();
@@ -328,11 +328,11 @@ class Processor {
     }
 
     //rule file contains a rule for this subfield
-    if(arraysOfObjects.size() <= subFieldsIndex){
+    if (arraysOfObjects.size() <= subFieldsIndex) {
       temporarilySaveObjectsWithMultipleFields(arraysOfObjects, subFieldsIndex);
     }
 
-    if(!applyPost){
+    if (!applyPost) {
 
       //apply rule on the per subfield data. if applyPost is set to true, we need
       //to wait and run this after all the data associated with this target has been
@@ -350,19 +350,19 @@ class Processor {
       subField2Data.get(subfield).append(data);
     } else {
       StringBuilder sb = buffers2concat.get(0);
-      if(entityRequestedPerRepeatedSubfield){
+      if (entityRequestedPerRepeatedSubfield) {
         //create a new value no matter what , since this use case
         //indicates that repeated and non-repeated subfields will create a new entity
         //so we should not concat values
         sb.delete(0, sb.length());
       }
-      if(sb.length() > 0){
+      if (sb.length() > 0) {
         sb.append(" ");
       }
       sb.append(data);
     }
 
-    if(entityRequestedPerRepeatedSubfield && entityRequested){
+    if (entityRequestedPerRepeatedSubfield && entityRequested) {
       createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
       String completeData = generateDataString();
       createNewObject(embeddedFields, completeData, arraysOfObjects.get(subFieldsIndex));
@@ -379,10 +379,11 @@ class Processor {
   }
 
   private void handleDelimiters() {
-    if(delimiters != null){
 
-      for (int j = 0; j < delimiters.size(); j++) {
-        JsonObject job = delimiters.getJsonObject(j);
+    if (delimiters != null) {
+
+      for (int delimiterIndex = 0; delimiterIndex < delimiters.size(); delimiterIndex++) {
+        JsonObject job = delimiters.getJsonObject(delimiterIndex);
         String delimiter = job.getString(VALUE);
         JsonArray subFieldswithDel = job.getJsonArray("subfields");
         StringBuilder subFieldsStringBuilder = new StringBuilder();
@@ -390,26 +391,27 @@ class Processor {
         if(subFieldswithDel.size() == 0){
           separator = delimiter;
         }
-        for (int k = 0; k < subFieldswithDel.size(); k++) {
-          subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
-          subField2Data.put(subFieldswithDel.getString(k), subFieldsStringBuilder);
+
+        for (int subFieldsWDelIndex = 0; subFieldsWDelIndex < subFieldswithDel.size(); subFieldsWDelIndex++) {
+          subField2Delimiter.put(subFieldswithDel.getString(subFieldsWDelIndex), delimiter);
+          subField2Data.put(subFieldswithDel.getString(subFieldsWDelIndex), subFieldsStringBuilder);
         }
       }
-    }
-    else{
+    } else {
       buffers2concat.add(new StringBuilder());
     }
   }
 
-  private String managePushToDB(String tenantId, boolean done,
-                                Map<String, String> okapiHeaders) throws JsonProcessingException {
+  private String managePushToDB(String tenantId, boolean done, Map<String, String> okapiHeaders)
+    throws JsonProcessingException {
 
     Object record = object;
 
-    if(importSQLStatement.length() == 0 && record == null && done) {
+    if (importSQLStatement.length() == 0 && record == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
     }
+
     if (importSQLStatement.length() == 0 && !isTest) {
       importSQLStatement
         .append("COPY ")
@@ -417,15 +419,17 @@ class Processor {
         .append("_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
       importSQLStatement.append(System.lineSeparator());
     }
-    if(record != null){
+
+    if (record != null) {
       importSQLStatement.append(((Instance)record).getId()).append("|").append(ObjectMapperTool.getMapper().writeValueAsString(record)).append(
         System.lineSeparator());
     }
+
     counter++;
     if (counter == bulkSize || done) {
       counter = 0;
       try {
-        if(!isTest){
+        if (!isTest) {
           importSQLStatement.append("\\.");
           HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
           importSQLStatement.delete(0, importSQLStatement.length());
@@ -446,6 +450,7 @@ class Processor {
 
   private void processMarcControlSection(Iterator<ControlField> ctrlIter, JsonObject rulesFile)
     throws IllegalAccessException, InstantiationException {
+
     //iterate over all the control fields in the marc record
     //for each control field , check if there is a rule for mapping that field in the rule file
     while (ctrlIter.hasNext()) {
@@ -466,8 +471,8 @@ class Processor {
     Object[] rememberComplexObj = new Object[]{null};
     createNewComplexObj = true;
 
-    for (int i = 0; i < controlFieldRules.size(); i++) {
-      JsonObject cfRule = controlFieldRules.getJsonObject(i);
+    for (int cfrIndex = 0; cfrIndex < controlFieldRules.size(); cfrIndex++) {
+      JsonObject cfRule = controlFieldRules.getJsonObject(cfrIndex);
 
       //get rules - each rule can contain multiple conditions that need to be met and a
       //value to inject in case all the conditions are met
@@ -495,7 +500,7 @@ class Processor {
   }
 
   private String processRules(String data){
-    if(rules == null){
+    if (rules == null) {
       return Escaper.escape(data);
     }
 
@@ -564,7 +569,8 @@ class Processor {
       data = processedCondition.getData();
       conditionsMet = processedCondition.isConditionsMet();
     }
-    if(conditionsMet && ruleConstVal != null && !isCustom){
+
+    if (conditionsMet && ruleConstVal != null && !isCustom) {
 
       //all conditions of the rule were met, and there
       //is a constant value associated with the rule, and this is
@@ -580,12 +586,13 @@ class Processor {
                                                              boolean conditionsMet, String ruleConstVal,
                                                              boolean isCustom) {
 
-    if(leader != null && condition.getBoolean("LDR") != null){
+    if (leader != null && condition.getBoolean("LDR") != null) {
 
       //the rule also has a condition on the leader field
       //whose value also needs to be passed into any declared function
       data = leader.toString();
     }
+
     String valueParam = condition.getString(VALUE);
     for (String function : ProcessorHelper.getFunctionsFromCondition(condition)) {
       ProcessedSinglePlusConditionCheck processedFunction =  processFunction(function, data, isCustom, valueParam, condition,
@@ -596,7 +603,8 @@ class Processor {
         break;
       }
     }
-    if(!conditionsMet){
+
+    if (!conditionsMet) {
 
       //all conditions for this rule we not met, revert data to the originalData passed in.
       return new ProcessedSinglePlusConditionCheck(originalData, true, false);
@@ -608,30 +616,28 @@ class Processor {
                                                             String valueParam, JsonObject condition,
                                                             boolean conditionsMet, String ruleConstVal) {
 
-    if(CUSTOM.equals(function.trim())){
-      try{
+    if (CUSTOM.equals(function.trim())) {
+      try {
         if (valueParam == null) {
           throw new NullPointerException("valueParam == null");
         }
         data = (String)JSManager.runJScript(valueParam, data);
-      }
-      catch(Exception e){
+      } catch(Exception e) {
 
         //the function has thrown an exception meaning this condition has failed,
         //hence this specific rule has failed
         conditionsMet = false;
         LOGGER.error(e.getMessage(), e);
       }
-    }
-    else{
+    } else {
       String c = NormalizationFunctions.runFunction(function.trim(), data, condition.getString("parameter"));
-      if(valueParam != null && !c.equals(valueParam) && !isCustom){
+      if (valueParam != null && !c.equals(valueParam) && !isCustom) {
 
         //still allow a condition to compare the output of a function on the data to a constant value
         //unless this is a custom javascript function in which case, the value holds the custom function
         return new ProcessedSinglePlusConditionCheck(data, true, false);
-      }
-      else if (ruleConstVal == null){
+
+      } else if (ruleConstVal == null) {
 
         //if there is no val to use as a replacement , then assume the function
         //is doing generating the needed value and set the data to the returned value
@@ -648,7 +654,7 @@ class Processor {
     //may not be the first function listed in the function list
     //a little wasteful, but this will probably only loop at most over 2 or 3 function names
     for (String function : functions) {
-      if(CUSTOM.equals(function.trim())){
+      if (CUSTOM.equals(function.trim())) {
         isCustom = true;
         break;
       }
@@ -666,7 +672,7 @@ class Processor {
    */
   private boolean createNewObject(String[] embeddedFields, String data, Object[] rememberComplexObj) {
 
-    if(data.length() != 0){
+    if (data.length() != 0) {
       Object val = getValue(object, embeddedFields, data);
       try {
         return LoaderAPI.buildObject(object, embeddedFields, createNewComplexObj, val, rememberComplexObj);
@@ -686,8 +692,8 @@ class Processor {
   private String generateDataString(){
     StringBuilder finalData = new StringBuilder();
     for (StringBuilder sb : buffers2concat) {
-      if(sb.length() > 0){
-        if(finalData.length() > 0){
+      if (sb.length() > 0) {
+        if (finalData.length() > 0) {
           finalData.append(separator);
         }
         finalData.append(sb);
@@ -708,27 +714,30 @@ class Processor {
    * @throws ScriptException
    */
   private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
+
     List<Subfield> expandedSubs = new ArrayList<>();
     String func = splitConf.getString(TYPE);
     boolean isCustom = false;
-    if(CUSTOM.equals(func)){
+
+    if (CUSTOM.equals(func)) {
       isCustom = true;
     }
+
     String param = splitConf.getString(VALUE);
     for (Subfield sub : subs) {
       String data = sub.getData();
       Iterator<?> splitData;
-      if(isCustom){
+      if (isCustom) {
         try {
           splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)JSManager.runJScript(param, data)).values().iterator();
         } catch (Exception e) {
           LOGGER.error("Expanding a field via subFieldSplit must return an array of results. ");
           throw e;
         }
-      }
-      else{
+      } else {
         splitData = NormalizationFunctions.runSplitFunction(func, data, param);
       }
+
       while (splitData.hasNext()) {
         String newData = (String)splitData.next();
         Subfield expandedSub = new SubfieldImpl(sub.getCode(), newData);
@@ -773,16 +782,17 @@ class Processor {
         block.fail(e);
       }
     }, true, whenDone -> {
-      if(whenDone.succeeded()){
-        if(!isTest){
+      if (whenDone.succeeded()) {
+
+        if (!isTest) {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             LoadResource.PostLoadStaticResponse.withCreated(whenDone.result().toString())));
-        }else{
+        } else {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             LoadResource.PostLoadStaticTestResponse.withPlainCreated(whenDone.result().toString())));
         }
-      }
-      else{
+
+      } else {
         asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
           LoadResource.PostLoadStaticResponse.withPlainBadRequest(whenDone.cause().getMessage())));
       }
@@ -799,7 +809,7 @@ class Processor {
     JsonObject jobj = new JsonObject(content);
     String error = validateStaticLoad(jobj);
 
-    if(error != null){
+    if (error != null) {
       block.fail(error);
       return;
     }
@@ -808,13 +818,13 @@ class Processor {
     boolean isArray = JsonValidator.isValidJsonArray(jobj.getValue(VALUES).toString());
     List<JsonObject> listOfRecords;
 
-    if(isArray){
+    if (isArray) {
       listOfRecords = contentArray2list(jobj);
-    } else{
+    } else {
       listOfRecords = contentObject2list(jobj);
     }
 
-    if(listOfRecords.isEmpty()){
+    if (listOfRecords.isEmpty()) {
       block.fail("No records to process...");
       return;
     }
@@ -829,7 +839,7 @@ class Processor {
       importSQLStatementMethod.append(id).append("|").append(persistRecord).append(System.lineSeparator());
     }
 
-    if(!isTest){
+    if (!isTest) {
       importSQLStatementMethod.append("\\.");
       HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
       if (response.getStatusLine().getStatusCode() != 200) {
@@ -852,30 +862,30 @@ class Processor {
 
   private String insertRandomUUID(JsonObject record) {
     String id = record.getString("id");
-    if(id == null || "${randomUUID}".equals(id)){
+    if (id == null || "${randomUUID}".equals(id)) {
       id = UUID.randomUUID().toString();
     }
     return id;
   }
 
-  private String validateStaticLoad(JsonObject jobj){
+  private String validateStaticLoad(JsonObject jobj) {
+
     String table = jobj.getString(TYPE);
     JsonObject record = jobj.getJsonObject(RECORD);
     Object values = jobj.getValue(VALUES);
 
-    if((table == null && !isTest)){
+    if ((table == null && !isTest)) {
       return "type field (table name) must be defined in input";
-    }
-    else if(record == null){
+    } else if (record == null) {
       return "record field must be defined in input";
-    }
-    else if(values == null){
+    } else if (values == null) {
       return "values field must be defined in input";
     }
     return null;
   }
 
   private List<JsonObject> contentArray2list(JsonObject jobj){
+
     JsonArray values = jobj.getJsonArray(VALUES);
     JsonObject record = jobj.getJsonObject(RECORD);
     List<JsonObject> listOfRecords = new ArrayList<>();
@@ -889,6 +899,7 @@ class Processor {
   }
 
   private List<JsonObject> contentObject2list(JsonObject jobj){
+
     JsonObject values = jobj.getJsonObject(VALUES);
     JsonObject record = jobj.getJsonObject(RECORD);
     List<JsonObject> listOfRecords = new ArrayList<>();
@@ -906,6 +917,7 @@ class Processor {
   }
 
   private static Object getValue(Object object, String[] path, String value) {
+
     Class<?> type = Integer.TYPE;
     for (String pathSegment : path) {
       try {
@@ -924,6 +936,7 @@ class Processor {
   }
 
   private static Object getValue(Class<?> type, String value) {
+
     Object val;
     if (type.isAssignableFrom(String.class)) {
       val = value;
