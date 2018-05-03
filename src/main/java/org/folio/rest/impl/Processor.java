@@ -66,6 +66,7 @@ class Processor {
   private String url;
 
   private Leader leader;
+  private String separator; //separator between subfields with different delimiters
   private Object object;
   private JsonArray rules;
   private boolean createNewComplexObj;
@@ -275,10 +276,7 @@ class Processor {
     //subfield sets. this list is then iterated over and used to delimit subfield sets
     final List<StringBuilder> buffers2concat = new ArrayList<>();
 
-    //separator between subfields with different delimiters
-    String[] separator = new String[]{ null };
-
-    handleDelimiters(delimiters, buffers2concat, separator, subField2Delimiter, subField2Data);
+    handleDelimiters(delimiters, buffers2concat, subField2Delimiter, subField2Data);
 
     String[] embeddedFields = jObj.getString("target").split("\\.");
     if (!isMappingValid(object, embeddedFields)) {
@@ -296,12 +294,12 @@ class Processor {
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
         delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
-        entityRequestedPerRepeatedSubfield, embeddedFields, separator);
+        entityRequestedPerRepeatedSubfield, embeddedFields);
     }
 
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
 
-      String completeData = generateDataString(buffers2concat, separator[0]);
+      String completeData = generateDataString(buffers2concat);
       if(applyPost){
         completeData = processRules(completeData);
       }
@@ -317,8 +315,7 @@ class Processor {
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
                                   boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
-                                  String[] embeddedFields,
-                                  String[] separator) {
+                                  String[] embeddedFields) {
 
     String data = subFields.get(subFieldsIndex).getData();
     char sub1 = subFields.get(subFieldsIndex).getCode();
@@ -364,7 +361,7 @@ class Processor {
 
     if(entityRequestedPerRepeatedSubfield && entityRequested){
       createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
-      String completeData = generateDataString(buffers2concat, separator[0]);
+      String completeData = generateDataString(buffers2concat);
       createNewObject(embeddedFields, completeData, arraysOfObjects.get(subFieldsIndex));
     }
   }
@@ -379,7 +376,7 @@ class Processor {
   }
 
   private void handleDelimiters(JsonArray delimiters, List<StringBuilder> buffers2concat,
-                                             String[] separator, Map<String, String> subField2Delimiter,
+                                             Map<String, String> subField2Delimiter,
                                              Map<String, StringBuilder> subField2Data) {
     if(delimiters != null){
 
@@ -390,7 +387,7 @@ class Processor {
         StringBuilder subFieldsStringBuilder = new StringBuilder();
         buffers2concat.add(subFieldsStringBuilder);
         if(subFieldswithDel.size() == 0){
-          separator[0] = delimiter;
+          separator = delimiter;
         }
         for (int k = 0; k < subFieldswithDel.size(); k++) {
           subField2Delimiter.put(subFieldswithDel.getString(k), delimiter);
@@ -683,10 +680,9 @@ class Processor {
   /**
    * @param buffers2concat - list of string buffers, each one representing the data belonging to a set of
    * subfields concatenated together, so for example, 2 sets of subfields will mean two entries in the list
-   * @param separator - separator between sets of subfields
    * @return
    */
-  private String generateDataString(List<StringBuilder> buffers2concat, String separator){
+  private String generateDataString(List<StringBuilder> buffers2concat){
     StringBuilder finalData = new StringBuilder();
     for (StringBuilder sb : buffers2concat) {
       if(sb.length() > 0){
