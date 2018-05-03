@@ -66,6 +66,7 @@ class Processor {
   private String url;
 
   private Leader leader;
+  private Object object;
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -99,7 +100,7 @@ class Processor {
           processSingleEntry(reader, isTest, block, unprocessed);
         }
 
-        String error = managePushToDB(isTest, tenantId, null, true, okapiHeaders);
+        String error = managePushToDB(isTest, tenantId, true, okapiHeaders);
         if(error != null){
           block.fail(new Exception(error));
           return;
@@ -147,14 +148,14 @@ class Processor {
       leader = record.getLeader();
       Iterator<ControlField> ctrlIter = cf.iterator();
       Iterator<DataField> dfIter = df.iterator();
-      Object object = new Instance();
-      processMarcControlSection(ctrlIter, object, rulesFile);
+      object = new Instance();
+      processMarcControlSection(ctrlIter, rulesFile);
 
       while (dfIter.hasNext()) {
-        handleMarcRecordFieldByField(dfIter, object);
+        handleMarcRecordFieldByField(dfIter);
       }
 
-      String error = managePushToDB(isTest, tenantId, object, false, okapiHeaders);
+      String error = managePushToDB(isTest, tenantId, false, okapiHeaders);
       if(error != null){
         block.fail(new Exception(error));
       }
@@ -164,7 +165,7 @@ class Processor {
     }
   }
 
-  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter, Object object)
+  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter)
     throws ScriptException, IllegalAccessException, InstantiationException {
 
     boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
@@ -182,11 +183,11 @@ class Processor {
       //per subfield in the marc field
       JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
       createNewComplexObj =
-        processSubFieldMapping(subFieldMapping, object, createNewComplexObj, rememberComplexObj, dataField);
+        processSubFieldMapping(subFieldMapping, createNewComplexObj, rememberComplexObj, dataField);
     }
   }
 
-  private boolean processSubFieldMapping(JsonObject subFieldMapping, Object object,
+  private boolean processSubFieldMapping(JsonObject subFieldMapping,
                                       boolean createNewComplexObj, Object[] rememberComplexObj, DataField dataField)
     throws IllegalAccessException, InstantiationException, ScriptException {
 
@@ -219,7 +220,7 @@ class Processor {
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
 
-      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, object, dataField,
+      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField,
         entityRequested, entityRequestedPerRepeatedSubfield, createNewComplexObj, rememberComplexObj);
 
     }
@@ -230,7 +231,7 @@ class Processor {
   }
 
   private boolean handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
-                                    Object object, DataField dataField, boolean entityRequested,
+                                    DataField dataField, boolean entityRequested,
                                     boolean entityRequestedPerRepeatedSubfield, boolean createNewComplexObj,
                                     Object[] rememberComplexObj) throws ScriptException, IllegalAccessException, InstantiationException {
 
@@ -296,7 +297,7 @@ class Processor {
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects, rules,
         delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
-        entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, object, separator);
+        entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, separator);
     }
 
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
@@ -305,7 +306,7 @@ class Processor {
         completeData = processRules(completeData, rules);
       }
       boolean created =
-        createNewObject(embeddedFields, object, completeData, createNewComplexObj, rememberComplexObj);
+        createNewObject(embeddedFields, completeData, createNewComplexObj, rememberComplexObj);
       if(created){
         createNewComplexObj = false;
       }
@@ -319,7 +320,7 @@ class Processor {
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
                                   boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
-                                  String[] embeddedFields, boolean createNewComplexObj, Object object,
+                                  String[] embeddedFields, boolean createNewComplexObj,
                                   String[] separator) {
 
     String data = subFields.get(subFieldsIndex).getData();
@@ -367,7 +368,7 @@ class Processor {
     if(entityRequestedPerRepeatedSubfield && entityRequested){
       createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
       String completeData = generateDataString(buffers2concat, separator[0]);
-      createNewObject(embeddedFields, object, completeData, createNewComplexObj, arraysOfObjects.get(subFieldsIndex));
+      createNewObject(embeddedFields, completeData, createNewComplexObj, arraysOfObjects.get(subFieldsIndex));
     }
 
     return createNewComplexObj;
@@ -407,8 +408,10 @@ class Processor {
     }
   }
 
-  private String managePushToDB(boolean isTest, String tenantId, Object record, boolean done,
+  private String managePushToDB(boolean isTest, String tenantId, boolean done,
                                 Map<String, String> okapiHeaders) throws JsonProcessingException {
+
+    Object record = object;
 
     if(importSQLStatement.length() == 0 && record == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
@@ -448,7 +451,7 @@ class Processor {
     return null;
   }
 
-  private void processMarcControlSection(Iterator<ControlField> ctrlIter, Object object, JsonObject rulesFile)
+  private void processMarcControlSection(Iterator<ControlField> ctrlIter, JsonObject rulesFile)
     throws IllegalAccessException, InstantiationException {
     //iterate over all the control fields in the marc record
     //for each control field , check if there is a rule for mapping that field in the rule file
@@ -457,13 +460,14 @@ class Processor {
       //get entry for this control field in the rules.json file
       JsonArray controlFieldRules = rulesFile.getJsonArray(controlField.getTag());
       if (controlFieldRules != null) {
-        handleControlFieldRules(controlFieldRules, controlField, object);
+        handleControlFieldRules(controlFieldRules, controlField);
       }
     }
   }
 
-  private void handleControlFieldRules(JsonArray controlFieldRules, ControlField controlField,
-                                       Object object) throws IllegalAccessException, InstantiationException {
+  private void handleControlFieldRules(JsonArray controlFieldRules, ControlField controlField)
+    throws IllegalAccessException, InstantiationException {
+
     //when populating an object with multiple fields from the same marc field
     //this is used to pass the reference of the previously created object to the buildObject function
     Object[] rememberComplexObj = new Object[]{null};
@@ -670,7 +674,7 @@ class Processor {
    * this can be null if we are now creating a new object within the instance object
    * @return
    */
-  private boolean createNewObject(String[] embeddedFields, Object object, String data,
+  private boolean createNewObject(String[] embeddedFields, String data,
                                   boolean createNewComplexObj, Object[] rememberComplexObj) {
 
     if(data.length() != 0){
