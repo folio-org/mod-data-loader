@@ -68,6 +68,7 @@ class Processor {
   private Leader leader;
   private Object object;
   private JsonArray rules;
+  private boolean createNewComplexObj;
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -169,7 +170,7 @@ class Processor {
   private void handleMarcRecordFieldByField(Iterator<DataField> dfIter)
     throws ScriptException, IllegalAccessException, InstantiationException {
 
-    boolean createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
+    createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
     Object[] rememberComplexObj = new Object[] { null };
     DataField dataField = dfIter.next();
     JsonArray mappingEntry = rulesFile.getJsonArray(dataField.getTag());
@@ -183,13 +184,11 @@ class Processor {
       //there could be multiple mapping entries, specifically different mappings
       //per subfield in the marc field
       JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
-      createNewComplexObj =
-        processSubFieldMapping(subFieldMapping, createNewComplexObj, rememberComplexObj, dataField);
+      processSubFieldMapping(subFieldMapping, rememberComplexObj, dataField);
     }
   }
 
-  private boolean processSubFieldMapping(JsonObject subFieldMapping,
-                                      boolean createNewComplexObj, Object[] rememberComplexObj, DataField dataField)
+  private void processSubFieldMapping(JsonObject subFieldMapping, Object[] rememberComplexObj, DataField dataField)
     throws IllegalAccessException, InstantiationException, ScriptException {
 
     //a single mapping entry can also map multiple subfields to a specific field in the instance
@@ -221,19 +220,18 @@ class Processor {
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
 
-      createNewComplexObj = handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField,
-        entityRequested, entityRequestedPerRepeatedSubfield, createNewComplexObj, rememberComplexObj);
+      handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField, entityRequested,
+        entityRequestedPerRepeatedSubfield, rememberComplexObj);
 
     }
     if(entityRequested){
       createNewComplexObj = true;
     }
-    return createNewComplexObj;
   }
 
-  private boolean handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
+  private void handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
                                     DataField dataField, boolean entityRequested,
-                                    boolean entityRequestedPerRepeatedSubfield, boolean createNewComplexObj,
+                                    boolean entityRequestedPerRepeatedSubfield,
                                     Object[] rememberComplexObj) throws ScriptException, IllegalAccessException, InstantiationException {
 
     JsonObject jObj = instanceField.getJsonObject(instanceFieldIndex);
@@ -285,7 +283,7 @@ class Processor {
     String[] embeddedFields = jObj.getString("target").split("\\.");
     if (!isMappingValid(object, embeddedFields)) {
       LOGGER.debug("bad mapping " + jObj.encode());
-      return createNewComplexObj;
+      return;
     }
     //iterate over the subfields in the mapping entry
     List<Subfield> subFields = dataField.getSubfields();
@@ -296,39 +294,37 @@ class Processor {
     }
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
-      createNewComplexObj = handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
+      handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
         delimiters, applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
-        entityRequestedPerRepeatedSubfield, embeddedFields, createNewComplexObj, separator);
+        entityRequestedPerRepeatedSubfield, embeddedFields, separator);
     }
 
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
+
       String completeData = generateDataString(buffers2concat, separator[0]);
       if(applyPost){
         completeData = processRules(completeData);
       }
-      boolean created =
-        createNewObject(embeddedFields, completeData, createNewComplexObj, rememberComplexObj);
-      if(created){
+      if(createNewObject(embeddedFields, completeData, rememberComplexObj)){
         createNewComplexObj = false;
       }
     }
     ((Instance)object).setId(UUID.randomUUID().toString());
-    return createNewComplexObj;
   }
 
-  private boolean handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
+  private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
                                   List<Object[]> arraysOfObjects, JsonArray delimiters,
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
                                   boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
-                                  String[] embeddedFields, boolean createNewComplexObj,
+                                  String[] embeddedFields,
                                   String[] separator) {
 
     String data = subFields.get(subFieldsIndex).getData();
     char sub1 = subFields.get(subFieldsIndex).getCode();
     String subfield = String.valueOf(sub1);
     if (!subFieldsSet.contains(subfield)) {
-      return createNewComplexObj;
+      return;
     }
 
     //rule file contains a rule for this subfield
@@ -369,10 +365,8 @@ class Processor {
     if(entityRequestedPerRepeatedSubfield && entityRequested){
       createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
       String completeData = generateDataString(buffers2concat, separator[0]);
-      createNewObject(embeddedFields, completeData, createNewComplexObj, arraysOfObjects.get(subFieldsIndex));
+      createNewObject(embeddedFields, completeData, arraysOfObjects.get(subFieldsIndex));
     }
-
-    return createNewComplexObj;
   }
 
   private void temporarilySaveObjectsWithMultipleFields(List<Object[]> arraysOfObjects, int subFieldsIndex) {
@@ -472,7 +466,7 @@ class Processor {
     //when populating an object with multiple fields from the same marc field
     //this is used to pass the reference of the previously created object to the buildObject function
     Object[] rememberComplexObj = new Object[]{null};
-    boolean createNewComplexObj = true;
+    createNewComplexObj = true;
 
     for (int i = 0; i < controlFieldRules.size(); i++) {
       JsonObject cfRule = controlFieldRules.getJsonObject(i);
@@ -668,14 +662,11 @@ class Processor {
    * create the need part of the instance object based on the target and the string containing the
    * content per subfield sets
    * @param embeddedFields - the targer
-   * @param createNewComplexObj - whether to create a new object within the instance object - for example,
-   * a new classification object, or set a value for a field in an existing object
    * @param rememberComplexObj - the current object within the instance object we are currently populating
    * this can be null if we are now creating a new object within the instance object
    * @return
    */
-  private boolean createNewObject(String[] embeddedFields, String data,
-                                  boolean createNewComplexObj, Object[] rememberComplexObj) {
+  private boolean createNewObject(String[] embeddedFields, String data, Object[] rememberComplexObj) {
 
     if(data.length() != 0){
       Object val = getValue(object, embeddedFields, data);
