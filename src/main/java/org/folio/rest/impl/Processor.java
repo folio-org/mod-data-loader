@@ -73,6 +73,7 @@ class Processor {
   private boolean createNewComplexObj;
   private boolean entityRequested;
   private boolean entityRequestedPerRepeatedSubfield;
+  private final List<StringBuilder> buffers2concat = new ArrayList<>();
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -275,9 +276,9 @@ class Processor {
 
     //keeps a reference to the stringbuilders that contain the data of the
     //subfield sets. this list is then iterated over and used to delimit subfield sets
-    final List<StringBuilder> buffers2concat = new ArrayList<>();
+    buffers2concat.clear();
 
-    handleDelimiters(buffers2concat, subField2Delimiter, subField2Data);
+    handleDelimiters(subField2Delimiter, subField2Data);
 
     String[] embeddedFields = jObj.getString("target").split("\\.");
     if (!isMappingValid(object, embeddedFields)) {
@@ -294,13 +295,13 @@ class Processor {
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
-        applyPost, subField2Data, subField2Delimiter, buffers2concat,
+        applyPost, subField2Data, subField2Delimiter,
         embeddedFields);
     }
 
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
 
-      String completeData = generateDataString(buffers2concat);
+      String completeData = generateDataString();
       if(applyPost){
         completeData = processRules(completeData);
       }
@@ -314,7 +315,7 @@ class Processor {
   private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
                                   List<Object[]> arraysOfObjects,
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
-                                  Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
+                                  Map<String, String> subField2Delimiter,
                                   String[] embeddedFields) {
 
     String data = subFields.get(subFieldsIndex).getData();
@@ -361,7 +362,7 @@ class Processor {
 
     if(entityRequestedPerRepeatedSubfield && entityRequested){
       createNewComplexObj = arraysOfObjects.get(subFieldsIndex)[0] == null;
-      String completeData = generateDataString(buffers2concat);
+      String completeData = generateDataString();
       createNewObject(embeddedFields, completeData, arraysOfObjects.get(subFieldsIndex));
     }
   }
@@ -375,9 +376,7 @@ class Processor {
     }
   }
 
-  private void handleDelimiters(List<StringBuilder> buffers2concat,
-                                             Map<String, String> subField2Delimiter,
-                                             Map<String, StringBuilder> subField2Data) {
+  private void handleDelimiters(Map<String, String> subField2Delimiter, Map<String, StringBuilder> subField2Data) {
     if(delimiters != null){
 
       for (int j = 0; j < delimiters.size(); j++) {
@@ -678,11 +677,11 @@ class Processor {
   }
 
   /**
-   * @param buffers2concat - list of string buffers, each one representing the data belonging to a set of
+   * buffers2concat - list of string buffers, each one representing the data belonging to a set of
    * subfields concatenated together, so for example, 2 sets of subfields will mean two entries in the list
    * @return
    */
-  private String generateDataString(List<StringBuilder> buffers2concat){
+  private String generateDataString(){
     StringBuilder finalData = new StringBuilder();
     for (StringBuilder sb : buffers2concat) {
       if(sb.length() > 0){
