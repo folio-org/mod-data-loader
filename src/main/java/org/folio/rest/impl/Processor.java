@@ -71,6 +71,8 @@ class Processor {
   private Object object;
   private JsonArray rules;
   private boolean createNewComplexObj;
+  private boolean entityRequested;
+  private boolean entityRequestedPerRepeatedSubfield;
 
   private static final int CONNECT_TIMEOUT = 3 * 1000;
   private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
@@ -202,12 +204,12 @@ class Processor {
     //multiple entities can be declared in a field, meaning each entity will be a new object
     //with the subfields defined in a single entity grouped as a single object.
     //all definitions not enclosed within the entity will be associated with anothe single object
-    boolean entityRequested = false;
+    entityRequested = false;
 
     //for repeatable subfields, you can indicate that each repeated subfield should respect
     //the new object declaration and create a new object. so that if there are two "a" subfields
     //each one will create its own object
-    boolean entityRequestedPerRepeatedSubfield =
+    entityRequestedPerRepeatedSubfield =
       BooleanUtils.isTrue(subFieldMapping.getBoolean("entityPerRepeatedSubfield"));
 
     //if no "entity" is defined , then all rules contents of the field getting mapped to the same type
@@ -222,8 +224,7 @@ class Processor {
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
 
-      handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField, entityRequested,
-        entityRequestedPerRepeatedSubfield, rememberComplexObj);
+      handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField, rememberComplexObj);
 
     }
     if(entityRequested){
@@ -232,9 +233,8 @@ class Processor {
   }
 
   private void handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
-                                    DataField dataField, boolean entityRequested,
-                                    boolean entityRequestedPerRepeatedSubfield,
-                                    Object[] rememberComplexObj) throws ScriptException, IllegalAccessException, InstantiationException {
+                                    DataField dataField, Object[] rememberComplexObj)
+    throws ScriptException, IllegalAccessException, InstantiationException {
 
     JsonObject jObj = instanceField.getJsonObject(instanceFieldIndex);
     JsonArray subFieldsArray = jObj.getJsonArray("subfield");
@@ -294,8 +294,8 @@ class Processor {
 
     for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
       handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
-        applyPost, subField2Data, subField2Delimiter, buffers2concat, entityRequested,
-        entityRequestedPerRepeatedSubfield, embeddedFields);
+        applyPost, subField2Data, subField2Delimiter, buffers2concat,
+        embeddedFields);
     }
 
     if(!(entityRequestedPerRepeatedSubfield && entityRequested)){
@@ -315,7 +315,6 @@ class Processor {
                                   List<Object[]> arraysOfObjects,
                                   boolean applyPost, Map<String, StringBuilder> subField2Data,
                                   Map<String, String> subField2Delimiter, List<StringBuilder> buffers2concat,
-                                  boolean entityRequested, boolean entityRequestedPerRepeatedSubfield,
                                   String[] embeddedFields) {
 
     String data = subFields.get(subFieldsIndex).getData();
