@@ -236,6 +236,7 @@ class Processor {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
                                     DataField dataField, Object[] rememberComplexObj)
     throws ScriptException, IllegalAccessException, InstantiationException {
@@ -243,9 +244,12 @@ class Processor {
     JsonObject jObj = instanceField.getJsonObject(instanceFieldIndex);
     JsonArray subFieldsArray = jObj.getJsonArray("subfield");
 
+    // TODO: check whether it is 100% safe to suppress to unchecked warning here
+    List<String> subFieldsList = subFieldsArray.getList();
+
     //push into a set so that we can do a lookup for each subfield in the marc instead
     //of looping over the array
-    Set<String> subFieldsSet = new HashSet<>(subFieldsArray.getList());
+    Set<String> subFieldsSet = new HashSet<>(subFieldsList);
 
     //it can be a one to one mapping, or there could be rules to apply prior to the mapping
     rules = jObj.getJsonArray("rules");
