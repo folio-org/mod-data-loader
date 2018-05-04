@@ -636,10 +636,10 @@ class Processor {
   /**
    * create the need part of the instance object based on the target and the string containing the
    * content per subfield sets
-   * @param embeddedFields - the targer
+   * @param embeddedFields - the target
    * @param rememberComplexObj - the current object within the instance object we are currently populating
    * this can be null if we are now creating a new object within the instance object
-   * @return
+   * @return whether a new object was created (boolean)
    */
   private boolean createNewObject(String[] embeddedFields, String data, Object[] rememberComplexObj) {
 
@@ -658,7 +658,7 @@ class Processor {
   /**
    * buffers2concat - list of string buffers, each one representing the data belonging to a set of
    * subfields concatenated together, so for example, 2 sets of subfields will mean two entries in the list
-   * @return
+   * @return the generated data string
    */
   private String generateDataString(){
     StringBuilder finalData = new StringBuilder();
@@ -680,11 +680,11 @@ class Processor {
    * entity per repeated subfield flag
    * the data is expanded by the implementing function (can be custom as well) - the implementing function
    * receives data from ONE subfield at a time - two $a subfields will be processed separately.
-   * @param subs
-   * @param splitConf
-   * @throws ScriptException
+   * @param subFields - sub fields not yet expanded
+   * @param splitConf - (add description)
+   * @throws ScriptException - (add description)
    */
-  private void expandSubfields(List<Subfield> subs, JsonObject splitConf) throws ScriptException {
+  private void expandSubfields(List<Subfield> subFields, JsonObject splitConf) throws ScriptException {
 
     List<Subfield> expandedSubs = new ArrayList<>();
     String func = splitConf.getString(TYPE);
@@ -695,12 +695,18 @@ class Processor {
     }
 
     String param = splitConf.getString(VALUE);
-    for (Subfield sub : subs) {
-      String data = sub.getData();
+    for (Subfield subField : subFields) {
+
+      String data = subField.getData();
       Iterator<?> splitData;
+
       if (isCustom) {
         try {
-          splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)JSManager.runJScript(param, data)).values().iterator();
+
+          splitData = ((jdk.nashorn.api.scripting.ScriptObjectMirror)JSManager.runJScript(param, data))
+            .values()
+            .iterator();
+
         } catch (Exception e) {
           LOGGER.error("Expanding a field via subFieldSplit must return an array of results. ");
           throw e;
@@ -711,12 +717,12 @@ class Processor {
 
       while (splitData.hasNext()) {
         String newData = (String)splitData.next();
-        Subfield expandedSub = new SubfieldImpl(sub.getCode(), newData);
+        Subfield expandedSub = new SubfieldImpl(subField.getCode(), newData);
         expandedSubs.add(expandedSub);
       }
     }
-    subs.clear();
-    subs.addAll(expandedSubs);
+    subFields.clear();
+    subFields.addAll(expandedSubs);
   }
 
   private HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
