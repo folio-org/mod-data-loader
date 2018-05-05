@@ -812,7 +812,7 @@ class Processor {
 
     for (JsonObject record : listOfRecords) {
       String id = insertRandomUUID(record);
-      String persistRecord = record.encode().replaceAll("\\$\\{randomUUID\\}", id);
+      String persistRecord = record.encode().replaceAll("\\$\\{randomUUID", id);
       importSQLStatementMethod.append(id).append("|").append(persistRecord).append(System.lineSeparator());
     }
 
