@@ -25,7 +25,7 @@ public class NormalizationFunctions {
    * Return null if val is null or funcName is not "split_every".
    * @return the chunks
    */
-  public static Iterator<?> runSplitFunction(String funcName, String val, String param){
+  public static Iterator<String> runSplitFunction(String funcName, String val, String param){
     if(val == null){
       return null;
     }
@@ -108,11 +108,6 @@ public class NormalizationFunctions {
         return input;
       }
     }
-    /*
-       if(!Character.isAlphabetic(input.charAt(pos)) && !Character.isDigit(input.charAt(pos))){
-        return input.substring(0, input.length()-1);
-       }
-    */
     return input;
   }
 }
