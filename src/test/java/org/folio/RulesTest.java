@@ -1,6 +1,8 @@
 package org.folio;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -20,6 +22,7 @@ import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.hamcrest.Matchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -151,6 +154,7 @@ public class RulesTest {
       Instance instance = jsonMapper.readValue(
         body.get(i).substring(body.get(i).indexOf("|")+1),
         Instance.class);
+      assertUuid(instance.getId());
       instance.setId(null);
       try {
         System.out.print((i+1) + " ");
@@ -199,6 +203,7 @@ public class RulesTest {
     for(int i=0; i<lines.size(); i++){
       Mtype mtype = jsonMapper.readValue(
         body.get(i).substring(body.get(i).indexOf("|")+1), Mtype.class);
+      assertUuid(mtype.getId());
       mtype.setId(null);
       try {
         System.out.print((i+1) + " ");
@@ -341,6 +346,12 @@ public class RulesTest {
       request.headers().add("x-okapi-tenant","ABC");
     }
     request.end(content);
+  }
+
+  private static void assertUuid(String uuid) {
+    assertNotNull(uuid);
+    assertThat("UUID xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx where x is [0-9a-f]",
+        uuid, Matchers.matchesPattern("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"));
   }
 
   public static Handler<HttpClientResponse> empty(
