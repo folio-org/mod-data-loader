@@ -55,6 +55,7 @@ public class LoaderAPI implements LoadResource {
         PostLoadMarcRulesResponse.withPlainBadRequest(TENANT_NOT_SET)));
       return;
     }
+
     String sqlFile = IOUtils.toString(entity, "UTF8");
 
     try {
@@ -71,7 +72,7 @@ public class LoaderAPI implements LoadResource {
 
   @Override
   public void getLoadMarcRules(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
@@ -89,19 +90,19 @@ public class LoaderAPI implements LoadResource {
 
   @Override
   public void getLoadMarcData(Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
       GetLoadMarcDataResponse.withPlainMethodNotAllowed(NOT_IMPLEMENTED)));
   }
 
   @Override
   public void postLoadMarcDataTest(InputStream entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws Exception {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     String tenantId = TenantTool.calculateTenantId(
       okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
-    if(validRequest(asyncResultHandler, okapiHeaders)){
+    if (validRequest(asyncResultHandler, okapiHeaders)) {
       new Processor(tenantId, okapiHeaders).process(true, entity, vertxContext, asyncResultHandler, bulkSize);
     }
   }
@@ -112,7 +113,7 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
-    if(!validRequest(asyncResultHandler, okapiHeaders)){
+    if (!validRequest(asyncResultHandler, okapiHeaders)) {
       return;
     }
 
@@ -126,21 +127,24 @@ public class LoaderAPI implements LoadResource {
     headers.put("Accept", "text/plain");
     CompletableFuture<org.folio.rest.tools.client.Response> resp = client.request( "/admin/health" , headers );
     resp.whenComplete( (response, error) -> {
+
       try {
-        if(error != null){
+
+        if (error != null) {
           LOGGER.error(error.getCause());
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
           return;
         }
-        if(response.getCode() != 200){
+
+        if (response.getCode() != 200) {
           LOGGER.error("Unable to connect to the inventory storage module at..." + storageURL);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
-        }
-        else{
+        } else {
           new Processor(tenantId, okapiHeaders).process(false, entity, vertxContext, asyncResultHandler, bulkSize);
         }
+
       } finally {
         client.closeClient();
       }
