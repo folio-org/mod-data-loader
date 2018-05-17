@@ -254,7 +254,7 @@ class Processor {
     //it can be a one to one mapping, or there could be rules to apply prior to the mapping
     rules = jObj.getJsonArray("rules");
 
-    // see ### Delimiters in /doc/processor.md
+    // see ### Delimiters in README.md (section Processor.java)
     delimiters = jObj.getJsonArray("subFieldDelimiter");
 
     //this is a map of each subfield to the delimiter to delimit it with
@@ -518,7 +518,7 @@ class Processor {
     //get the conditions associated with each rule
     JsonArray conditions = rule.getJsonArray("conditions");
 
-    // see ### constant value in /doc/processor.md
+    // see ### constant value in README.md (section Processor.java)
     String ruleConstVal = rule.getString(VALUE);
     boolean conditionsMet = true;
 
@@ -530,7 +530,7 @@ class Processor {
     for (int m = 0; m < conditions.size(); m++) {
       JsonObject condition = conditions.getJsonObject(m);
 
-      // see ### functions in /doc/processor.md
+      // see ### functions in README.md (section Processor.java)
       String[] functions = ProcessorHelper.getFunctionsFromCondition(condition);
       isCustom = checkIfAnyFunctionIsCustom(functions, isCustom);
 
