@@ -5,18 +5,26 @@ import java.util.Iterator;
 import com.google.common.base.Splitter;
 
 /**
- * @author shale
- *
+ * Run a splitter on a string or run a function.
  */
 public class NormalizationFunctions {
 
-  public static final String CHAR_SELECT = "char_select";
-  public static final String REMOVE_ENDING_PUNC = "remove_ending_punc";
-  public static final String TRIM = "trim";
-  public static final String TRIM_PERIOD = "trim_period";
-  public static final String SPLIT_FUNCTION_SPLIT_EVERY = "split_every";
-  public static final String PUNCT_2_REMOVE = ";:,/+= ";
+  private static final String CHAR_SELECT = "char_select";
+  private static final String REMOVE_ENDING_PUNC = "remove_ending_punc";
+  private static final String TRIM = "trim";
+  private static final String TRIM_PERIOD = "trim_period";
+  private static final String SPLIT_FUNCTION_SPLIT_EVERY = "split_every";
+  private static final String PUNCT_2_REMOVE = ";:,/+= ";
 
+  private NormalizationFunctions() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class.");
+  }
+
+  /**
+   * Split val into chunks of param characters if funcName is "split_every".
+   * Return null if val is null or funcName is not "split_every".
+   * @return the chunks
+   */
   public static Iterator<?> runSplitFunction(String funcName, String val, String param){
     if(val == null){
       return null;
@@ -27,6 +35,10 @@ public class NormalizationFunctions {
     return null;
   }
 
+  /**
+   * Run the function funcName on val and param.
+   * @return the function's result
+   */
   public static String runFunction(String funcName, String val, String param){
     if(val == null){
       return "";
@@ -38,7 +50,7 @@ public class NormalizationFunctions {
       return removeEndingPunc(val);
     }
     else if(TRIM.equals(funcName)){
-      return trim(val);
+      return val.trim();
     }
     else if(TRIM_PERIOD.equals(funcName)){
       return trimPeriod(val);
@@ -50,7 +62,7 @@ public class NormalizationFunctions {
     return Splitter.fixedLength(Integer.parseInt(param)).split(val).iterator();
   }
 
-  public static String charSelect(String val, String pos){
+  private static String charSelect(String val, String pos){
     try{
       if(pos.contains("-")){
         String []range = pos.split("-");
@@ -64,22 +76,14 @@ public class NormalizationFunctions {
     }
   }
 
-  public static String trimPeriod(final String input){
-    try{
-      if('.' == input.charAt(input.length()-1)){
-        return input.substring(0, input.length()-1);
-      }
-      return input;
-    }catch(Exception e){
-      return input;
+  private static String trimPeriod(final String input) {
+    if (input.endsWith(".")) {
+      return input.substring(0, input.length()-1);
     }
+    return input;
   }
 
-  public static String trim(String val){
-    return val.trim();
-  }
-
-  public static String removeEndingPunc(String val){
+  private static String removeEndingPunc(String val){
     return modified(val, (val.length()-1));
   }
 
