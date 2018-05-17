@@ -188,11 +188,11 @@ class Processor {
     }
 
     //there is a mapping associated with this marc field
-    for (int mappingEntryIndex = 0; mappingEntryIndex < mappingEntry.size(); mappingEntryIndex++) {
+    for (int i = 0; i < mappingEntry.size(); i++) {
 
       //there could be multiple mapping entries, specifically different mappings
       //per subfield in the marc field
-      JsonObject subFieldMapping = mappingEntry.getJsonObject(mappingEntryIndex);
+      JsonObject subFieldMapping = mappingEntry.getJsonObject(i);
       processSubFieldMapping(subFieldMapping, rememberComplexObj, dataField);
     }
   }
@@ -227,8 +227,8 @@ class Processor {
     }
 
     List<Object[]> arraysOfObjects = new ArrayList<>();
-    for (int instanceFieldIndex = 0; instanceFieldIndex < instanceField.size(); instanceFieldIndex++) {
-      handleInstanceFields(instanceField, instanceFieldIndex, arraysOfObjects, dataField, rememberComplexObj);
+    for (int i = 0; i < instanceField.size(); i++) {
+      handleInstanceFields(instanceField, i, arraysOfObjects, dataField, rememberComplexObj);
     }
 
     if (entityRequested) {
@@ -295,8 +295,8 @@ class Processor {
       expandSubfields(subFields, splitter);
     }
 
-    for (int subFieldsIndex = 0; subFieldsIndex < subFields.size(); subFieldsIndex++) {
-      handleSubFields(subFields, subFieldsIndex, subFieldsSet, arraysOfObjects,
+    for (int i = 0; i < subFields.size(); i++) {
+      handleSubFields(subFields, i, subFieldsSet, arraysOfObjects,
         applyPost,
         embeddedFields);
     }
@@ -369,8 +369,7 @@ class Processor {
   private void temporarilySaveObjectsWithMultipleFields(List<Object[]> arraysOfObjects, int subFieldsIndex) {
     //temporarily save objects with multiple fields so that the fields of the
     //same object can be populated with data from different subfields
-    for (int arraysOfObjectsIndex = arraysOfObjects.size(); arraysOfObjectsIndex <= subFieldsIndex;
-         arraysOfObjectsIndex++) {
+    for (int i = arraysOfObjects.size(); i <= subFieldsIndex; i++) {
       arraysOfObjects.add(new Object[] { null });
     }
   }
@@ -379,8 +378,8 @@ class Processor {
 
     if (delimiters != null) {
 
-      for (int delimiterIndex = 0; delimiterIndex < delimiters.size(); delimiterIndex++) {
-        JsonObject job = delimiters.getJsonObject(delimiterIndex);
+      for (int i = 0; i < delimiters.size(); i++) {
+        JsonObject job = delimiters.getJsonObject(i);
         String delimiter = job.getString(VALUE);
         JsonArray subFieldswithDel = job.getJsonArray("subfields");
         StringBuilder subFieldsStringBuilder = new StringBuilder();
@@ -389,9 +388,9 @@ class Processor {
           separator = delimiter;
         }
 
-        for (int subFieldsWDelIndex = 0; subFieldsWDelIndex < subFieldswithDel.size(); subFieldsWDelIndex++) {
-          subField2Delimiter.put(subFieldswithDel.getString(subFieldsWDelIndex), delimiter);
-          subField2Data.put(subFieldswithDel.getString(subFieldsWDelIndex), subFieldsStringBuilder);
+        for (int ii = 0; ii < subFieldswithDel.size(); ii++) {
+          subField2Delimiter.put(subFieldswithDel.getString(ii), delimiter);
+          subField2Data.put(subFieldswithDel.getString(ii), subFieldsStringBuilder);
         }
       }
     } else {
@@ -468,8 +467,8 @@ class Processor {
     Object[] rememberComplexObj = new Object[]{null};
     createNewComplexObj = true;
 
-    for (int cfrIndex = 0; cfrIndex < controlFieldRules.size(); cfrIndex++) {
-      JsonObject cfRule = controlFieldRules.getJsonObject(cfrIndex);
+    for (int i = 0; i < controlFieldRules.size(); i++) {
+      JsonObject cfRule = controlFieldRules.getJsonObject(i);
 
       //get rules - each rule can contain multiple conditions that need to be met and a
       //value to inject in case all the conditions are met
@@ -503,8 +502,8 @@ class Processor {
 
     //there are rules associated with this subfield / control field - to instance field mapping
     String originalData = data;
-    for (int ruleIndex = 0; ruleIndex < rules.size(); ruleIndex++) {
-      ProcessedSingleItem psi = processRule(rules.getJsonObject(ruleIndex), data, originalData);
+    for (int i = 0; i < rules.size(); i++) {
+      ProcessedSingleItem psi = processRule(rules.getJsonObject(i), data, originalData);
       data = psi.getData();
       if (psi.doBreak()) {
         break;
