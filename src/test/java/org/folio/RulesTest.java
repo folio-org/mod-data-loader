@@ -144,7 +144,7 @@ public class RulesTest {
     TextResponse t = loadDataCf.get();
     System.out.println("response for loading marc-data is: " + t.getStatusCode());
     assertEquals(201, t.getStatusCode());
-    List<String> body = getBodyAsList(t.body);
+    List<String> body = getBodyAsList(t.getBody());
     System.out.print("comparing line....");
 
     for(int i=0; i<lines.size(); i++){
@@ -389,11 +389,11 @@ public class RulesTest {
   static class Response {
     private final int statusCode;
 
-    public Response(int statusCode) {
+    Response(int statusCode) {
       this.statusCode = statusCode;
     }
 
-    public int getStatusCode() {
+    int getStatusCode() {
       return statusCode;
     }
   }
@@ -401,12 +401,12 @@ public class RulesTest {
   static class TextResponse extends Response {
     private final String body;
 
-    public TextResponse(int statusCode, String body) {
+    TextResponse(int statusCode, String body) {
       super(statusCode);
       this.body = body;
     }
 
-    public String getBody() {
+    String getBody() {
       return body;
     }
 
