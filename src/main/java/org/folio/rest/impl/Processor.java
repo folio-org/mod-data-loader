@@ -37,8 +37,7 @@ import org.marc4j.marc.impl.SubfieldImpl;
 
 import javax.script.ScriptException;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
@@ -161,11 +160,9 @@ class Processor {
       Iterator<ControlField> ctrlIter = cf.iterator();
       Iterator<DataField> dfIter = df.iterator();
       object = new Instance();
-      processMarcControlSection(ctrlIter, rulesFile);
 
-      while (dfIter.hasNext()) {
-        handleMarcRecordFieldByField(dfIter);
-      }
+      processControlFieldSection(ctrlIter, rulesFile);
+      processDataFieldSection(dfIter);
 
       String error = managePushToDB(tenantId, false, okapiHeaders);
       if (error != null) {
@@ -177,7 +174,15 @@ class Processor {
     }
   }
 
-  private void handleMarcRecordFieldByField(Iterator<DataField> dfIter) throws ScriptException, IllegalAccessException,
+  private void processDataFieldSection(Iterator<DataField> dfIter) throws IllegalAccessException, ScriptException,
+    InstantiationException {
+
+    while (dfIter.hasNext()) {
+      handleRecordDataFieldByField(dfIter);
+    }
+  }
+
+  private void handleRecordDataFieldByField(Iterator<DataField> dfIter) throws ScriptException, IllegalAccessException,
     InstantiationException {
 
     createNewComplexObj = true; // each rule will generate a new object in an array , for an array data member
@@ -229,7 +234,8 @@ class Processor {
 
     List<Object[]> arraysOfObjects = new ArrayList<>();
     for (int i = 0; i < instanceField.size(); i++) {
-      handleInstanceFields(instanceField, i, arraysOfObjects, dataField, rememberComplexObj);
+      JsonObject jObj = instanceField.getJsonObject(i);
+      handleInstanceFields(jObj, arraysOfObjects, dataField, rememberComplexObj);
     }
 
     if (entityRequested) {
@@ -237,11 +243,9 @@ class Processor {
     }
   }
 
-  private void handleInstanceFields(JsonArray instanceField, int instanceFieldIndex, List<Object[]> arraysOfObjects,
+  private void handleInstanceFields(JsonObject jObj, List<Object[]> arraysOfObjects,
                                     DataField dataField, Object[] rememberComplexObj)
     throws ScriptException, IllegalAccessException, InstantiationException {
-
-    JsonObject jObj = instanceField.getJsonObject(instanceFieldIndex);
 
     //push into a set so that we can do a lookup for each subfield in the marc instead
     //of looping over the array
@@ -310,7 +314,7 @@ class Processor {
         createNewComplexObj = false;
       }
     }
-    ((Instance)object).setId(UUID.randomUUID().toString());
+    ((Instance) object).setId(UUID.randomUUID().toString());
   }
 
   private void handleSubFields(List<Subfield> subFields, int subFieldsIndex, Set<String> subFieldsSet,
@@ -416,8 +420,8 @@ class Processor {
     }
 
     if (record != null) {
-      importSQLStatement.append(((Instance)record).getId()).append("|").append(ObjectMapperTool.getMapper().writeValueAsString(record)).append(
-        System.lineSeparator());
+      importSQLStatement.append(((Instance) record).getId()).append("|").append(ObjectMapperTool.getMapper()
+        .writeValueAsString(record)).append(System.lineSeparator());
     }
 
     counter++;
@@ -443,7 +447,7 @@ class Processor {
     return null;
   }
 
-  private void processMarcControlSection(Iterator<ControlField> ctrlIter, JsonObject rulesFile)
+  private void processControlFieldSection(Iterator<ControlField> ctrlIter, JsonObject rulesFile)
     throws IllegalAccessException, InstantiationException {
 
     //iterate over all the control fields in the marc record
