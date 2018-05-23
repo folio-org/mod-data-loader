@@ -293,9 +293,7 @@ class Processor {
     }
 
     for (int i = 0; i < subFields.size(); i++) {
-      handleSubFields(subFields, i, subFieldsSet, arraysOfObjects,
-        applyPost,
-        embeddedFields);
+      handleSubFields(subFields, i, subFieldsSet, arraysOfObjects, applyPost, embeddedFields);
     }
 
     if (!(entityRequestedPerRepeatedSubfield && entityRequested)) {
