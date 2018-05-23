@@ -53,9 +53,6 @@ public class RulesTest {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
   }
 
-  /**
-   * @param context  the test context.
-   */
   @BeforeClass
   public static void setUp() throws IOException {
     vertx = VertxUtils.getVertxWithExceptionHandler();
@@ -93,7 +90,6 @@ public class RulesTest {
   /**
    * Cleanup: Delete temporary file, restore Locale, close the vert.x instance.
    *
-   * @param context  the test context
    */
   @AfterClass
   public static void tearDown() {
@@ -152,9 +148,8 @@ public class RulesTest {
     System.out.print("comparing line....");
 
     for(int i=0; i<lines.size(); i++){
-      Instance instance = jsonMapper.readValue(
-        body.get(i).substring(body.get(i).indexOf("|")+1),
-        Instance.class);
+
+      Instance instance = jsonMapper.readValue(body.get(i).substring(body.get(i).indexOf("|")+1), Instance.class);
       assertUuid(instance.getId());
       instance.setId(null);
       assertEqualObject(lines, i, instance);
