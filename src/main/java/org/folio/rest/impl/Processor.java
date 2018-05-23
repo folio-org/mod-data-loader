@@ -157,12 +157,10 @@ class Processor {
       df = record.getDataFields();
       cf = record.getControlFields();
       leader = record.getLeader();
-      Iterator<ControlField> ctrlIter = cf.iterator();
-      Iterator<DataField> dfIter = df.iterator();
       object = new Instance();
 
-      processControlFieldSection(ctrlIter);
-      processDataFieldSection(dfIter);
+      processControlFieldSection(cf.iterator());
+      processDataFieldSection(df.iterator());
 
       String error = managePushToDB(tenantId, false, okapiHeaders);
       if (error != null) {
