@@ -161,7 +161,7 @@ class Processor {
       Iterator<DataField> dfIter = df.iterator();
       object = new Instance();
 
-      processControlFieldSection(ctrlIter, rulesFile);
+      processControlFieldSection(ctrlIter);
       processDataFieldSection(dfIter);
 
       String error = managePushToDB(tenantId, false, okapiHeaders);
@@ -447,7 +447,7 @@ class Processor {
     return null;
   }
 
-  private void processControlFieldSection(Iterator<ControlField> ctrlIter, JsonObject rulesFile)
+  private void processControlFieldSection(Iterator<ControlField> ctrlIter)
     throws IllegalAccessException, InstantiationException {
 
     //iterate over all the control fields in the marc record
