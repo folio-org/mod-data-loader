@@ -150,21 +150,29 @@ public class RulesTest {
     assertEquals(201, t.getStatusCode());
     List<String> body = getBodyAsList(t.body);
     System.out.print("comparing line....");
+
     for(int i=0; i<lines.size(); i++){
       Instance instance = jsonMapper.readValue(
         body.get(i).substring(body.get(i).indexOf("|")+1),
         Instance.class);
       assertUuid(instance.getId());
       instance.setId(null);
-      try {
-        System.out.print((i+1) + " ");
-        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
-      } catch (Exception e) {
-        System.out.println("error at " + (i+1));
-        e.printStackTrace();
-      }
+      assertEqualObject(lines, i, instance);
     }
     System.out.println("all "+lines.size()+" lines matched...");
+  }
+
+  private void assertEqualObject(List<String> lines, int lineIndex, Object object) {
+
+    int lineNumber = lineIndex + 1;
+
+    try {
+      System.out.print((lineNumber) + " ");
+      JsonAssert.areEqual(lines.get(lineIndex), PostgresClient.pojo2json(object));
+    } catch (Exception e) {
+      System.out.println("error at " + lineNumber);
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -205,13 +213,8 @@ public class RulesTest {
         body.get(i).substring(body.get(i).indexOf("|")+1), Mtype.class);
       assertUuid(mtype.getId());
       mtype.setId(null);
-      try {
-        System.out.print((i+1) + " ");
-        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(mtype));
-      } catch (Exception e) {
-        System.out.println("error at " + (i+1));
-        e.printStackTrace();
-      }
+
+      assertEqualObject(lines, i, mtype);
     }
   }
 
