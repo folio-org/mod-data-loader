@@ -151,16 +151,12 @@ class Processor {
 
     try {
       processedCount++;
-      List<DataField> df;
-      List<ControlField> cf;
       Record record = reader.next();
-      df = record.getDataFields();
-      cf = record.getControlFields();
       leader = record.getLeader();
       object = new Instance();
 
-      processControlFieldSection(cf.iterator());
-      processDataFieldSection(df.iterator());
+      processControlFieldSection(record.getControlFields().iterator());
+      processDataFieldSection(record.getDataFields().iterator());
 
       String error = managePushToDB(tenantId, false, okapiHeaders);
       if (error != null) {
