@@ -99,8 +99,7 @@ public class LoaderAPI implements LoadResource {
   public void postLoadMarcDataTest(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    String tenantId = TenantTool.calculateTenantId(
-      okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
+    String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
     if (validRequest(asyncResultHandler, okapiHeaders)) {
       new Processor(tenantId, okapiHeaders).process(true, entity, vertxContext, asyncResultHandler, bulkSize);
