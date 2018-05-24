@@ -1,10 +1,5 @@
 package org.folio;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -38,33 +33,31 @@ import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import junit.framework.Assert;
+
+import static org.junit.Assert.*;
 
 public class RulesTest {
   private static final Logger log = LoggerFactory.getLogger(Messages.class);
 
   private static Vertx vertx;
   private static int port;
-  HttpClient client = vertx.createHttpClient();
+  private HttpClient client = vertx.createHttpClient();
   private static Locale oldLocale = Locale.getDefault();
-  ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
+  private ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4jLogDelegateFactory");
   }
 
-  /**
-   * @param context  the test context.
-   */
   @BeforeClass
-  public static void setUp() throws IOException {
+  public static void setUp() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
 
     try {
       deployRestVerticle();
     } catch (Exception e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
     }
   }
 
@@ -82,6 +75,7 @@ public class RulesTest {
         deploymentComplete.completeExceptionally(res.cause());
       }
     });
+
     //wait for verticle to complete startup
     try {
       deploymentComplete.get();
@@ -93,7 +87,6 @@ public class RulesTest {
   /**
    * Cleanup: Delete temporary file, restore Locale, close the vert.x instance.
    *
-   * @param context  the test context
    */
   @AfterClass
   public static void tearDown() {
@@ -115,14 +108,16 @@ public class RulesTest {
     log.info("deleting created files");
     // Lists all files in folder
     File folder = new File(RestVerticle.DEFAULT_TEMP_DIR);
-    File fList[] = folder.listFiles();
+    File[] fList = folder.listFiles();
     // Searchs test.json
-    for (int i = 0; i < fList.length; i++) {
-        String pes = fList[i].getName();
-        if (pes.endsWith("test.json")) {
-            // and deletes
-            boolean success = fList[i].delete();
+    for (File file : fList) {
+      String pes = file.getName();
+      if (pes.endsWith("test.json")) {
+        // and deletes
+        if (file.delete()) {
+          System.out.println("Deleted test.json");
         }
+      }
     }
   }
 
@@ -148,23 +143,30 @@ public class RulesTest {
     TextResponse t = loadDataCf.get();
     System.out.println("response for loading marc-data is: " + t.getStatusCode());
     assertEquals(201, t.getStatusCode());
-    List<String> body = getBodyAsList(t.body);
+    List<String> body = getBodyAsList(t.getBody());
     System.out.print("comparing line....");
+
     for(int i=0; i<lines.size(); i++){
-      Instance instance = jsonMapper.readValue(
-        body.get(i).substring(body.get(i).indexOf("|")+1),
-        Instance.class);
+
+      Instance instance = jsonMapper.readValue(body.get(i).substring(body.get(i).indexOf("|")+1), Instance.class);
       assertUuid(instance.getId());
       instance.setId(null);
-      try {
-        System.out.print((i+1) + " ");
-        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(instance));
-      } catch (Exception e) {
-        System.out.println("error at " + (i+1));
-        e.printStackTrace();
-      }
+      assertEqualObject(lines, i, instance);
     }
     System.out.println("all "+lines.size()+" lines matched...");
+  }
+
+  private void assertEqualObject(List<String> lines, int lineIndex, Object object) {
+
+    int lineNumber = lineIndex + 1;
+
+    try {
+      System.out.print((lineNumber) + " ");
+      JsonAssert.areEqual(lines.get(lineIndex), PostgresClient.pojo2json(object));
+    } catch (Exception e) {
+      System.out.println("error at " + lineNumber);
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -205,13 +207,8 @@ public class RulesTest {
         body.get(i).substring(body.get(i).indexOf("|")+1), Mtype.class);
       assertUuid(mtype.getId());
       mtype.setId(null);
-      try {
-        System.out.print((i+1) + " ");
-        JsonAssert.areEqual(lines.get(i), PostgresClient.pojo2json(mtype));
-      } catch (Exception e) {
-        System.out.println("error at " + (i+1));
-        e.printStackTrace();
-      }
+
+      assertEqualObject(lines, i, mtype);
     }
   }
 
@@ -237,11 +234,11 @@ public class RulesTest {
         if(!body.get(i).contains(lines.get(i))){
           System.out.println("error at " + (i+1));
           System.out.println("when comparing " + body.get(i) + " and " + lines.get(i));
-          assertTrue(false);
+          fail();
         }
       } catch (Exception e) {
         e.printStackTrace();
-        assertTrue(false);
+        fail();
       }
     }
     assertTrue(true);
@@ -295,13 +292,13 @@ public class RulesTest {
     assertEquals(201, t.getStatusCode());
     List<String> body = getBodyAsList(t.body);
     if(!body.get(0).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd")){
-      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd",false);
+      fail("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfd");
     }
     if(!body.get(1).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc")){
-      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc",false);
+      fail("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfc");
     }
     if(!body.get(2).contains("9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb")){
-      assertTrue("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb",false);
+      fail("Expected id to be 9d5f9eb6-b92e-4a1a-b4f5-310bc38dacfb");
     }
     assertTrue(true);
   }
@@ -354,8 +351,7 @@ public class RulesTest {
         uuid, Matchers.matchesPattern("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"));
   }
 
-  public static Handler<HttpClientResponse> empty(
-      CompletableFuture<Response> completed) {
+  static Handler<HttpClientResponse> empty(CompletableFuture<Response> completed) {
 
       return response -> {
         try {
@@ -369,8 +365,7 @@ public class RulesTest {
       };
     }
 
-  public static Handler<HttpClientResponse> text(
-    CompletableFuture<TextResponse> completed) {
+  public static Handler<HttpClientResponse> text(CompletableFuture<TextResponse> completed) {
 
     return response -> {
         int statusCode = response.statusCode();
@@ -391,11 +386,11 @@ public class RulesTest {
   static class Response {
     private final int statusCode;
 
-    public Response(int statusCode) {
+    Response(int statusCode) {
       this.statusCode = statusCode;
     }
 
-    public int getStatusCode() {
+    int getStatusCode() {
       return statusCode;
     }
   }
@@ -403,12 +398,12 @@ public class RulesTest {
   static class TextResponse extends Response {
     private final String body;
 
-    public TextResponse(int statusCode, String body) {
+    TextResponse(int statusCode, String body) {
       super(statusCode);
       this.body = body;
     }
 
-    public String getBody() {
+    String getBody() {
       return body;
     }
 
