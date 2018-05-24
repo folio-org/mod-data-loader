@@ -31,6 +31,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.utils.Escaper;
 import org.folio.rest.validate.JsonValidator;
 import org.folio.util.IoUtil;
+import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.*;
 import org.marc4j.marc.impl.SubfieldImpl;
@@ -70,6 +71,7 @@ class Processor {
   private String separator; //separator between subfields with different delimiters
   private JsonArray delimiters;
   private Instance instance;
+  private JsonObject sourceRecord;
   private JsonArray rules;
   private boolean createNewComplexObj;
   private boolean entityRequested;
@@ -155,6 +157,8 @@ class Processor {
       leader = record.getLeader();
       instance = new Instance();
 
+      setSourceRecord(record);
+
       processControlFieldSection(record.getControlFields().iterator());
       processDataFieldSection(record.getDataFields().iterator());
 
@@ -166,6 +170,15 @@ class Processor {
       unprocessed.append("#").append(processedCount).append(" ");
       LOGGER.error(e.getMessage(), e);
     }
+  }
+
+  private void setSourceRecord(Record record) {
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
+    marcJsonWriter.write(record);
+    String recordSourceAsJson = baos.toString();
+    sourceRecord = new JsonObject(recordSourceAsJson);
   }
 
   private void processDataFieldSection(Iterator<DataField> dfIter) throws IllegalAccessException, ScriptException,
