@@ -396,9 +396,7 @@ class Processor {
   private String managePushToDB(String tenantId, boolean done, Map<String, String> okapiHeaders)
     throws JsonProcessingException {
 
-    Object record = instance;
-
-    if (importSQLStatement.length() == 0 && record == null && done) {
+    if (importSQLStatement.length() == 0 && instance == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
     }
@@ -411,9 +409,9 @@ class Processor {
       importSQLStatement.append(System.lineSeparator());
     }
 
-    if (record != null) {
-      importSQLStatement.append(((Instance) record).getId()).append("|").append(ObjectMapperTool.getMapper()
-        .writeValueAsString(record)).append(System.lineSeparator());
+    if (instance != null) {
+      importSQLStatement.append(instance.getId()).append("|").append(ObjectMapperTool.getMapper()
+        .writeValueAsString(instance)).append(System.lineSeparator());
     }
 
     counter++;
