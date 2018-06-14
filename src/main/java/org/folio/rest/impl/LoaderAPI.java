@@ -119,7 +119,8 @@ public class LoaderAPI implements LoadResource {
 
     this.bulkSize = bulkSize;
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
-    new Processor(tenantId, okapiHeaders).setUrl(storageURL);
+    Processor processor = new Processor(tenantId, okapiHeaders);
+    processor.setUrl(storageURL);
     HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
     //check if inventory storage is responding
@@ -142,7 +143,7 @@ public class LoaderAPI implements LoadResource {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
         } else {
-          new Processor(tenantId, okapiHeaders).process(false, entity, vertxContext, asyncResultHandler, bulkSize);
+          processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
         }
 
       } finally {
