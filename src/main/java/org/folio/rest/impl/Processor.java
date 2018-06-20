@@ -428,24 +428,30 @@ class Processor {
     }
 
     counter++;
+
+    String errorMessage = null;
     if (counter == bulkSize || done) {
-      counter = 0;
-      try {
-        if (!isTest) {
-          importSQLStatement.append("\\.");
-          HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-          importSQLStatement.delete(0, importSQLStatement.length());
-          if (response.getStatusLine().getStatusCode() != 200) {
-            String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
-            LOGGER.error(e);
-            return e;
-          }
+      errorMessage = closeAndPostSQL();
+    }
+    return errorMessage;
+  }
+
+  private String closeAndPostSQL() {
+    counter = 0;
+    try {
+      if (!isTest) {
+        importSQLStatement.append("\\.");
+        HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+        importSQLStatement.delete(0, importSQLStatement.length());
+        if (response.getStatusLine().getStatusCode() != 200) {
+          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+          LOGGER.error(e);
+          return e;
         }
-      } catch (Exception e) {
-        LOGGER.error(e.getMessage(), e);
-        return e.getMessage();
       }
-      return null;
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage(), e);
+      return e.getMessage();
     }
     return null;
   }
