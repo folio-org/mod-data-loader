@@ -108,7 +108,7 @@ public class LoaderAPI implements LoadResource {
 
   @Validate
   @Override
-  public void postLoadMarcData(String storageURL, int bulkSize, InputStream entity,
+  public void postLoadMarcData(String storageURL, int bulkSize, boolean storeSource, InputStream entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
