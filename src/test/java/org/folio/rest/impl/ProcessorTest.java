@@ -48,7 +48,7 @@ public class ProcessorTest {
     marcInputStream = this.getClass().getResourceAsStream("/msplit00000000.mrc");
 
     Map<String, String> okapiHeaders = new HashMap<>();
-    processor = new Processor("testTenantId", okapiHeaders, requester);
+    processor = new Processor("testTenantId", okapiHeaders, requester, false);
     dummyResponse = createDummyResponse();
 
     InputStream rules = this.getClass().getResourceAsStream("/rules.json");
@@ -65,8 +65,11 @@ public class ProcessorTest {
   public void sourceRecordHandlingTest(TestContext context) throws IOException {
 
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
+    processor.setStoreSource(true);
+
     processor.process(false, marcInputStream, vertx.getOrCreateContext(), context.asyncAssertSuccess(), 200);
 
+    processor.setStoreSource(false);
   }
 
   private BasicHttpResponse createDummyResponse() {

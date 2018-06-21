@@ -102,7 +102,8 @@ public class LoaderAPI implements LoadResource {
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
 
     if (validRequest(asyncResultHandler, okapiHeaders)) {
-      new Processor(tenantId, okapiHeaders, new Requester()).process(true, entity, vertxContext, asyncResultHandler, bulkSize);
+      Processor processor = new Processor(tenantId, okapiHeaders, new Requester(), false);
+      processor.process(true, entity, vertxContext, asyncResultHandler, bulkSize);
     }
   }
 
@@ -118,7 +119,7 @@ public class LoaderAPI implements LoadResource {
 
     this.bulkSize = bulkSize;
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
-    Processor processor = new Processor(tenantId, okapiHeaders, new Requester());
+    Processor processor = new Processor(tenantId, okapiHeaders, new Requester(), storeSource);
     processor.setUrl(storageURL);
     HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
@@ -272,7 +273,7 @@ public class LoaderAPI implements LoadResource {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
 
-    new Processor(null, okapiHeaders, new Requester())
+    new Processor(null, okapiHeaders, new Requester(), false)
       .processStatic(storageURL, false, entity, asyncResultHandler, vertxContext);
   }
 
@@ -287,7 +288,7 @@ public class LoaderAPI implements LoadResource {
   public void postLoadStaticTest(InputStream entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    new Processor(null, okapiHeaders, new Requester())
+    new Processor(null, okapiHeaders, new Requester(), false)
       .processStatic(null, true, entity, asyncResultHandler, vertxContext);
   }
 }

@@ -59,6 +59,7 @@ class Processor {
   private String tenantId;
   private Map<String, String> okapiHeaders;
   private String url;
+  private boolean storeSource;
   private boolean isTest;
 
   private Leader leader;
@@ -75,11 +76,12 @@ class Processor {
   private final Map<String, StringBuilder> subField2Data = new HashMap<>();
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
-  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester) {
+  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
     this.requester = requester;
+    this.storeSource = storeSource;
   }
 
   void setRulesFile(JsonObject rulesFile) {
@@ -90,8 +92,12 @@ class Processor {
     this.url = url;
   }
 
+  void setStoreSource(boolean storeSource) {
+    this.storeSource = storeSource;
+  }
+
   void process(boolean isTest, InputStream entity, Context vertxContext,
-                       Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
+               Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
 
     this.isTest = isTest;
     this.bulkSize = bulkSize;
