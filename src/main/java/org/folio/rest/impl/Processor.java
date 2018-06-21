@@ -10,14 +10,8 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
@@ -72,6 +66,7 @@ class Processor {
   private JsonArray delimiters;
   private Instance instance;
   private JsonObject sourceRecord;
+  private Requester requester;
   private JsonArray rules;
   private boolean createNewComplexObj;
   private boolean entityRequested;
@@ -80,15 +75,15 @@ class Processor {
   private final Map<String, StringBuilder> subField2Data = new HashMap<>();
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
-  private static final int CONNECT_TIMEOUT = 3 * 1000;
-  private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
-  private static final int SO_TIMEOUT = 180 * 1000; //during data flow, if interrupted for 180sec, regard connection as
-  // stalled/broken.
-
-  Processor(String tenantId, Map<String, String> okapiHeaders) {
+  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
+    this.requester = requester;
+  }
+
+  void setRulesFile(JsonObject rulesFile) {
+    this.rulesFile = rulesFile;
   }
 
   void setUrl(String url) {
@@ -114,7 +109,7 @@ class Processor {
           processSingleEntry(reader, block, unprocessed);
         }
 
-        String error = managePushToDB(tenantId, true, okapiHeaders);
+        String error = managePushToDB(tenantId, true);
 
         if(error != null){
           block.fail(new Exception(error));
@@ -162,7 +157,7 @@ class Processor {
       processControlFieldSection(record.getControlFields().iterator());
       processDataFieldSection(record.getDataFields().iterator());
 
-      String error = managePushToDB(tenantId, false, okapiHeaders);
+      String error = managePushToDB(tenantId, false);
       if (error != null) {
         block.fail(new Exception(error));
       }
@@ -406,7 +401,7 @@ class Processor {
     }
   }
 
-  private String managePushToDB(String tenantId, boolean done, Map<String, String> okapiHeaders)
+  private String managePushToDB(String tenantId, boolean done)
     throws JsonProcessingException {
 
     if (importSQLStatement.length() == 0 && instance == null && done) {
@@ -441,7 +436,7 @@ class Processor {
     try {
       if (!isTest) {
         importSQLStatement.append("\\.");
-        HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+        HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
         importSQLStatement.delete(0, importSQLStatement.length());
         if (response.getStatusLine().getStatusCode() != 200) {
           String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
@@ -736,28 +731,6 @@ class Processor {
     subFields.addAll(expandedSubs);
   }
 
-  private HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
-    RequestConfig config = RequestConfig.custom()
-      .setConnectTimeout(CONNECT_TIMEOUT)
-      .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-      .setSocketTimeout(SO_TIMEOUT)
-      .build();
-    try (CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultRequestConfig(config).build()) {
-      HttpPost httpPost = new HttpPost(url);
-      StringEntity stringEntity = new StringEntity(data.toString(), "UTF8");
-      httpPost.setEntity(stringEntity);
-      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT,
-        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
-      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TOKEN,
-        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
-      httpPost.setHeader(RestVerticle.OKAPI_USERID_HEADER,
-        okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
-      httpPost.setHeader("Content-type", "application/octet-stream");
-      httpPost.setHeader("Accept", "text/plain");
-      return httpclient.execute(httpPost);
-    }
-  }
-
   void processStatic(String url, boolean isTest, InputStream entity, Handler<AsyncResult<Response>> asyncResultHandler,
                      Context vertxContext){
     this.isTest = isTest;
@@ -829,7 +802,7 @@ class Processor {
 
     if (!isTest) {
       importSQLStatementMethod.append("\\.");
-      HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
+      HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
       if (response.getStatusLine().getStatusCode() != 200) {
         String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
         LOGGER.error(e);
