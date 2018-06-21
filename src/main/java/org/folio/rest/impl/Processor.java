@@ -15,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
+import org.folio.rest.model.SourceRecord;
 import org.folio.rest.service.LoaderHelper;
 import org.folio.rest.service.ProcessorHelper;
 import org.folio.rest.struct.ProcessedSinglePlusConditionCheck;
@@ -66,7 +67,7 @@ class Processor {
   private String separator; //separator between subfields with different delimiters
   private JsonArray delimiters;
   private Instance instance;
-  private JsonObject sourceRecord;
+  private SourceRecord sourceRecord;
   private Requester requester;
   private JsonArray rules;
   private boolean createNewComplexObj;
@@ -158,10 +159,12 @@ class Processor {
       leader = record.getLeader();
       instance = new Instance();
 
-      setSourceRecord(record);
-
       processControlFieldSection(record.getControlFields().iterator());
       processDataFieldSection(record.getDataFields().iterator());
+
+      if (storeSource) {
+        setSourceRecord(instance.getId(), record);
+      }
 
       String error = managePushToDB(tenantId, false);
       if (error != null) {
@@ -173,13 +176,13 @@ class Processor {
     }
   }
 
-  private void setSourceRecord(Record record) {
+  private void setSourceRecord(String id, Record record) {
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
     marcJsonWriter.write(record);
     String recordSourceAsJson = baos.toString();
-    sourceRecord = new JsonObject(recordSourceAsJson);
+    sourceRecord = new SourceRecord(id, new JsonObject(recordSourceAsJson));
   }
 
   private void processDataFieldSection(Iterator<DataField> dfIter) throws IllegalAccessException, ScriptException,
