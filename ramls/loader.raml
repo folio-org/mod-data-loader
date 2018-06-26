@@ -74,6 +74,12 @@ schemas:
           description: loader will batch this amount of records together into a transaction and persist
           required: false
           default: 50000
+        storeSource:
+          displayName: StoreSource
+          type: boolean
+          description: a source marc record (json) will be stored in a separate table outside of the instance
+          required: false
+          default: false
       body:
         application/octet-stream:
       responses:

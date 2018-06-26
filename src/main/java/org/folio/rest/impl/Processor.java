@@ -10,17 +10,12 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.javascript.JSManager;
 import org.folio.rest.jaxrs.model.Instance;
 import org.folio.rest.jaxrs.resource.LoadResource;
+import org.folio.rest.model.SourceRecord;
 import org.folio.rest.service.LoaderHelper;
 import org.folio.rest.service.ProcessorHelper;
 import org.folio.rest.struct.ProcessedSinglePlusConditionCheck;
@@ -31,6 +26,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.utils.Escaper;
 import org.folio.rest.validate.JsonValidator;
 import org.folio.util.IoUtil;
+import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.*;
 import org.marc4j.marc.impl.SubfieldImpl;
@@ -64,12 +60,15 @@ class Processor {
   private String tenantId;
   private Map<String, String> okapiHeaders;
   private String url;
+  private boolean storeSource;
   private boolean isTest;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
   private JsonArray delimiters;
   private Instance instance;
+  private SourceRecord sourceRecord;
+  private Requester requester;
   private JsonArray rules;
   private boolean createNewComplexObj;
   private boolean entityRequested;
@@ -78,23 +77,28 @@ class Processor {
   private final Map<String, StringBuilder> subField2Data = new HashMap<>();
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
-  private static final int CONNECT_TIMEOUT = 3 * 1000;
-  private static final int CONNECTION_TIMEOUT = 300 * 1000; //keep connection open this long
-  private static final int SO_TIMEOUT = 180 * 1000; //during data flow, if interrupted for 180sec, regard connection as
-  // stalled/broken.
-
-  Processor(String tenantId, Map<String, String> okapiHeaders) {
+  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
+    this.requester = requester;
+    this.storeSource = storeSource;
+  }
+
+  void setRulesFile(JsonObject rulesFile) {
+    this.rulesFile = rulesFile;
   }
 
   void setUrl(String url) {
     this.url = url;
   }
 
+  void setStoreSource(boolean storeSource) {
+    this.storeSource = storeSource;
+  }
+
   void process(boolean isTest, InputStream entity, Context vertxContext,
-                       Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
+               Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
 
     this.isTest = isTest;
     this.bulkSize = bulkSize;
@@ -112,7 +116,7 @@ class Processor {
           processSingleEntry(reader, block, unprocessed);
         }
 
-        String error = managePushToDB(tenantId, true, okapiHeaders);
+        String error = managePushToDB(tenantId, true);
 
         if(error != null){
           block.fail(new Exception(error));
@@ -158,7 +162,11 @@ class Processor {
       processControlFieldSection(record.getControlFields().iterator());
       processDataFieldSection(record.getDataFields().iterator());
 
-      String error = managePushToDB(tenantId, false, okapiHeaders);
+      if (storeSource) {
+        setSourceRecord(instance.getId(), record);
+      }
+
+      String error = managePushToDB(tenantId, false);
       if (error != null) {
         block.fail(new Exception(error));
       }
@@ -166,6 +174,15 @@ class Processor {
       unprocessed.append("#").append(processedCount).append(" ");
       LOGGER.error(e.getMessage(), e);
     }
+  }
+
+  private void setSourceRecord(String id, Record record) {
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
+    marcJsonWriter.write(record);
+    String recordSourceAsJson = baos.toString();
+    sourceRecord = new SourceRecord(id, new JsonObject(recordSourceAsJson));
   }
 
   private void processDataFieldSection(Iterator<DataField> dfIter) throws IllegalAccessException, ScriptException,
@@ -393,12 +410,10 @@ class Processor {
     }
   }
 
-  private String managePushToDB(String tenantId, boolean done, Map<String, String> okapiHeaders)
+  private String managePushToDB(String tenantId, boolean done)
     throws JsonProcessingException {
 
-    Object record = instance;
-
-    if (importSQLStatement.length() == 0 && record == null && done) {
+    if (importSQLStatement.length() == 0 && instance == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
     }
@@ -411,30 +426,36 @@ class Processor {
       importSQLStatement.append(System.lineSeparator());
     }
 
-    if (record != null) {
-      importSQLStatement.append(((Instance) record).getId()).append("|").append(ObjectMapperTool.getMapper()
-        .writeValueAsString(record)).append(System.lineSeparator());
+    if (instance != null) {
+      importSQLStatement.append(instance.getId()).append("|").append(ObjectMapperTool.getMapper()
+        .writeValueAsString(instance)).append(System.lineSeparator());
     }
 
     counter++;
+
+    String errorMessage = null;
     if (counter == bulkSize || done) {
-      counter = 0;
-      try {
-        if (!isTest) {
-          importSQLStatement.append("\\.");
-          HttpResponse response = post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-          importSQLStatement.delete(0, importSQLStatement.length());
-          if (response.getStatusLine().getStatusCode() != 200) {
-            String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
-            LOGGER.error(e);
-            return e;
-          }
+      errorMessage = closeAndPostSQL();
+    }
+    return errorMessage;
+  }
+
+  private String closeAndPostSQL() {
+    counter = 0;
+    try {
+      if (!isTest) {
+        importSQLStatement.append("\\.");
+        HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
+        importSQLStatement.delete(0, importSQLStatement.length());
+        if (response.getStatusLine().getStatusCode() != 200) {
+          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+          LOGGER.error(e);
+          return e;
         }
-      } catch (Exception e) {
-        LOGGER.error(e.getMessage(), e);
-        return e.getMessage();
       }
-      return null;
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage(), e);
+      return e.getMessage();
     }
     return null;
   }
@@ -719,28 +740,6 @@ class Processor {
     subFields.addAll(expandedSubs);
   }
 
-  private HttpResponse post(String url, StringBuilder data, Map<String, String> okapiHeaders) throws IOException {
-    RequestConfig config = RequestConfig.custom()
-      .setConnectTimeout(CONNECT_TIMEOUT)
-      .setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-      .setSocketTimeout(SO_TIMEOUT)
-      .build();
-    try (CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultRequestConfig(config).build()) {
-      HttpPost httpPost = new HttpPost(url);
-      StringEntity stringEntity = new StringEntity(data.toString(), "UTF8");
-      httpPost.setEntity(stringEntity);
-      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TENANT,
-        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
-      httpPost.setHeader(RestVerticle.OKAPI_HEADER_TOKEN,
-        okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
-      httpPost.setHeader(RestVerticle.OKAPI_USERID_HEADER,
-        okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
-      httpPost.setHeader("Content-type", "application/octet-stream");
-      httpPost.setHeader("Accept", "text/plain");
-      return httpclient.execute(httpPost);
-    }
-  }
-
   void processStatic(String url, boolean isTest, InputStream entity, Handler<AsyncResult<Response>> asyncResultHandler,
                      Context vertxContext){
     this.isTest = isTest;
@@ -812,7 +811,7 @@ class Processor {
 
     if (!isTest) {
       importSQLStatementMethod.append("\\.");
-      HttpResponse response = post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
+      HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatementMethod, okapiHeaders);
       if (response.getStatusLine().getStatusCode() != 200) {
         String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
         LOGGER.error(e);
