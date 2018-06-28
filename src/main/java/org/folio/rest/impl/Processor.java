@@ -62,7 +62,7 @@ class Processor {
   private String url;
   private boolean storeSource;
   private boolean isTest;
-  private String testUuid;
+  private String instanceId;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -79,13 +79,13 @@ class Processor {
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
   Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource,
-            String testUuid) {
+            String instanceId) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
     this.requester = requester;
     this.storeSource = storeSource;
-    this.testUuid = testUuid;
+    this.instanceId = instanceId;
   }
 
   void setRulesFile(JsonObject rulesFile) {
@@ -174,8 +174,8 @@ class Processor {
         setSourceRecord(instance.getId(), record);
       }
 
-      if (testUuid != null) {
-        instance.setId(testUuid);
+      if (instanceId != null) {
+        instance.setId(instanceId);
       }
 
       String error = managePushToDB(tenantId, false);

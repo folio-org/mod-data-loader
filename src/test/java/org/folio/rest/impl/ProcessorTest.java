@@ -69,7 +69,7 @@ public class ProcessorTest {
     processor.setRulesFile(rulesFile);
 
     processorSQLQueryTest = new Processor("testTenantId", okapiHeaders, requester, false,
-      "00000000-0000-0000-0000-000000000000");
+      "my-test-id");
     processorSQLQueryTest.setRulesFile(rulesFile);
     processorSQLQueryTest.process(true, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
   }
