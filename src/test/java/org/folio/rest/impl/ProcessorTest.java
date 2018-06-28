@@ -91,8 +91,7 @@ public class ProcessorTest {
 
   @Test
   public void sqlQueryTest() {
-    LOGGER.info("\n---\nsqlQueryTest()\n---\n");
-    LOGGER.info(processorSQLQueryTest.getImportSQLStatement() + "\n----");
+    LOGGER.info("\n---\nsqlQueryTest()\n---");
     assertEquals(twoMarcInstancesOut, processorSQLQueryTest.getImportSQLStatement());
   }
 
