@@ -62,6 +62,7 @@ class Processor {
   private String url;
   private boolean storeSource;
   private boolean isTest;
+  private String fixedGeneralInstanceId;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -77,12 +78,18 @@ class Processor {
   private final Map<String, StringBuilder> subField2Data = new HashMap<>();
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
-  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource) {
+  /**
+   * @param fixedGeneralInstanceId - usually set to null, it's there for testing purposes where a fixed id is required
+   *                               (see for example ProcessorTest.java)
+   */
+  Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource,
+            String fixedGeneralInstanceId) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
     this.requester = requester;
     this.storeSource = storeSource;
+    this.fixedGeneralInstanceId = fixedGeneralInstanceId;
   }
 
   void setRulesFile(JsonObject rulesFile) {
@@ -95,6 +102,10 @@ class Processor {
 
   void setStoreSource(boolean storeSource) {
     this.storeSource = storeSource;
+  }
+
+  String getImportSQLStatement() {
+    return importSQLStatement.toString();
   }
 
   void process(boolean isTest, InputStream entity, Context vertxContext,
@@ -116,6 +127,7 @@ class Processor {
           processSingleEntry(reader, block, unprocessed);
         }
 
+        instance = null;
         String error = managePushToDB(tenantId, true);
 
         if(error != null){
@@ -164,6 +176,10 @@ class Processor {
 
       if (storeSource) {
         setSourceRecord(instance.getId(), record);
+      }
+
+      if (fixedGeneralInstanceId != null) {
+        instance.setId(fixedGeneralInstanceId);
       }
 
       String error = managePushToDB(tenantId, false);
