@@ -62,7 +62,7 @@ class Processor {
   private String url;
   private boolean storeSource;
   private boolean isTest;
-  private String instanceId;
+  private String fixedGeneralInstanceId;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -78,14 +78,18 @@ class Processor {
   private final Map<String, StringBuilder> subField2Data = new HashMap<>();
   private final Map<String, String> subField2Delimiter = new HashMap<>();
 
+  /**
+   * @param fixedGeneralInstanceId - usually set to null, it's there for testing purposes where a fixed id is required
+   *                               (see for example ProcessorTest.java)
+   */
   Processor(String tenantId, Map<String, String> okapiHeaders, Requester requester, boolean storeSource,
-            String instanceId) {
+            String fixedGeneralInstanceId) {
     this.okapiHeaders = okapiHeaders;
     this.tenantId = tenantId;
     this.rulesFile = LoaderAPI.TENANT_RULES_MAP.get(tenantId);
     this.requester = requester;
     this.storeSource = storeSource;
-    this.instanceId = instanceId;
+    this.fixedGeneralInstanceId = fixedGeneralInstanceId;
   }
 
   void setRulesFile(JsonObject rulesFile) {
@@ -174,8 +178,8 @@ class Processor {
         setSourceRecord(instance.getId(), record);
       }
 
-      if (instanceId != null) {
-        instance.setId(instanceId);
+      if (fixedGeneralInstanceId != null) {
+        instance.setId(fixedGeneralInstanceId);
       }
 
       String error = managePushToDB(tenantId, false);
