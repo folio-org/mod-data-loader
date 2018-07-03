@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -12,16 +11,13 @@ import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
-import javax.ws.rs.core.Response;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,19 +25,9 @@ import java.util.Map;
 @RunWith(VertxUnitRunner.class)
 public class ProcessorTest {
 
-//  @Rule
-//  public RunTestOnContext rule = new RunTestOnContext();
   private static final Logger LOGGER = LogManager.getLogger(ProcessorTest.class);
   private Vertx vertx;
   private Processor processor;
-  private Processor processorSQLQueryTest;
-  private InputStream marcInputStream;
-  private InputStream twoMarcInstances;
-  private String twoMarcInstancesOut;
-  private BasicHttpResponse dummyResponse;
-
-  @Mock
-  private Handler<AsyncResult<Response>> asyncResultHandler;
 
   @Mock
   private Requester requester;
@@ -51,27 +37,19 @@ public class ProcessorTest {
 
     MockitoAnnotations.initMocks(this);
     vertx = Vertx.vertx();
-    dummyResponse = createDummyResponse();
+    BasicHttpResponse dummyResponse = createDummyResponse();
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
-    marcInputStream = this.getClass().getResourceAsStream("/msplit00000000.mrc");
-    twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-
-    try (InputStream is = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.out")) {
-      twoMarcInstancesOut = IOUtils.toString(is);
-    }
-
-    Map<String, String> okapiHeaders = new HashMap<>();
-    processor = new Processor("testTenantId", okapiHeaders, requester, false, null);
+    InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
 
     InputStream rules = this.getClass().getResourceAsStream("/rules.json");
     JsonObject rulesFile = new JsonObject(IOUtils.toString(rules));
-    processor.setRulesFile(rulesFile);
+    Map<String, String> okapiHeaders = new HashMap<>();
 
-    processorSQLQueryTest = new Processor("testTenantId", okapiHeaders, requester, false,
+    processor = new Processor("testTenantId", okapiHeaders, requester, true,
       "my-test-id");
-    processorSQLQueryTest.setRulesFile(rulesFile);
-    processorSQLQueryTest.process(true, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
+    processor.setRulesFile(rulesFile);
+    processor.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
   }
 
   @After
@@ -80,19 +58,11 @@ public class ProcessorTest {
   }
 
   @Test
-  public void sourceRecordHandlingTest(TestContext context) throws IOException {
-    LOGGER.info("\n---\nsourceRecordHandlingTest()\n---");
-    processor.setStoreSource(true);
-
-    processor.process(false, marcInputStream, vertx.getOrCreateContext(), context.asyncAssertSuccess(), 200);
-
-    processor.setStoreSource(false);
-  }
-
-  @Test
-  public void sqlQueryTest() {
-    LOGGER.info("\n---\nsqlQueryTest()\n---");
-    assertEquals(twoMarcInstancesOut, processorSQLQueryTest.getImportSQLStatement());
+  public void sqlQueriesTest() throws IOException {
+    LOGGER.info("\n---\nsqlQueriesTest()\n---");
+    InputStream twoMarcInstancesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.query");
+    assertEquals(IOUtils.toString(twoMarcInstancesSQL), processor.getLastInstancePostQuery() + "\n");
+//    assertEquals("expected query", processor.getLastSourcePostQuery());
   }
 
   private BasicHttpResponse createDummyResponse() {

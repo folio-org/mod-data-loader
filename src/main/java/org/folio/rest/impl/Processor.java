@@ -63,6 +63,7 @@ class Processor {
   private boolean storeSource;
   private boolean isTest;
   private String fixedGeneralInstanceId;
+  private String lastInstancePostQuery;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -100,12 +101,8 @@ class Processor {
     this.url = url;
   }
 
-  void setStoreSource(boolean storeSource) {
-    this.storeSource = storeSource;
-  }
-
-  String getImportSQLStatement() {
-    return importSQLStatement.toString();
+  String getLastInstancePostQuery() {
+    return lastInstancePostQuery;
   }
 
   void process(boolean isTest, InputStream entity, Context vertxContext,
@@ -461,8 +458,9 @@ class Processor {
     try {
       if (!isTest) {
         importSQLStatement.append("\\.");
+        lastInstancePostQuery = importSQLStatement.toString();
         HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-        importSQLStatement.delete(0, importSQLStatement.length());
+        importSQLStatement.setLength(0);
         if (response.getStatusLine().getStatusCode() != 200) {
           String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
           LOGGER.error(e);
