@@ -131,7 +131,7 @@ class Processor {
         }
 
         instance = null;
-        String error = managePushToDB(tenantId, true);
+        String error = managePushToDB(true);
 
         if(error != null){
           block.fail(new Exception(error));
@@ -186,7 +186,7 @@ class Processor {
         sourceRecord.setId(fixedGeneralInstanceId);
       }
 
-      String error = managePushToDB(tenantId, false);
+      String error = managePushToDB(false);
       if (error != null) {
         block.fail(new Exception(error));
       }
@@ -430,7 +430,7 @@ class Processor {
     }
   }
 
-  private String managePushToDB(String tenantId, boolean done)
+  private String managePushToDB(boolean done)
     throws JsonProcessingException {
 
     if (importSQLStatementInstance.length() == 0 && instance == null && done) {
