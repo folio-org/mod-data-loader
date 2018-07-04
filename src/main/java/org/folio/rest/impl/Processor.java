@@ -439,18 +439,11 @@ class Processor {
     }
 
     if (importSQLStatementInstance.length() == 0 && !isTest) {
-      importSQLStatementInstance
-        .append("COPY ")
-        .append(tenantId)
-        .append("_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
-      importSQLStatementInstance.append(System.lineSeparator());
+
+      beginSQLStatement(importSQLStatementInstance, "instance");
 
       if (storeSource) {
-        importSQLStatementSource
-          .append("COPY ")
-          .append(tenantId)
-          .append("_mod_inventory_storage.source(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
-        importSQLStatementSource.append(System.lineSeparator());
+        beginSQLStatement(importSQLStatementSource, "source");
       }
     }
 
@@ -465,8 +458,6 @@ class Processor {
         importSQLStatementSource
           .append(sourceRecord.getId())
           .append("|")
-//          .append(ObjectMapperTool.getMapper()
-//          .writeValueAsString(sourceRecord.getSourceJson().encode()))
           .append(sourceRecord.getSourceJson().encode())
           .append(System.lineSeparator());
       }
@@ -479,6 +470,16 @@ class Processor {
       errorMessage = closeAndPostSQL();
     }
     return errorMessage;
+  }
+
+  private void beginSQLStatement(StringBuilder importSQLStatement, String tableName) {
+    importSQLStatement
+      .append("COPY ")
+      .append(tenantId)
+      .append("_mod_inventory_storage.")
+      .append(tableName)
+      .append("(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';")
+      .append(System.lineSeparator());
   }
 
   private String closeAndPostSQL() {
