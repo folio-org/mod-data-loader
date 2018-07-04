@@ -41,7 +41,6 @@ public class ProcessorTest {
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
     InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-
     InputStream rules = this.getClass().getResourceAsStream("/rules.json");
     JsonObject rulesFile = new JsonObject(IOUtils.toString(rules));
     Map<String, String> okapiHeaders = new HashMap<>();
@@ -60,9 +59,10 @@ public class ProcessorTest {
   @Test
   public void sqlQueriesTest() throws IOException {
     LOGGER.info("\n---\nsqlQueriesTest()\n---");
-    InputStream twoMarcInstancesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.query");
-    assertEquals(IOUtils.toString(twoMarcInstancesSQL), processor.getLastInstancePostQuery() + "\n");
-//    assertEquals("expected query", processor.getLastSourcePostQuery());
+    InputStream twoMarcInstancesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.instance.query");
+    InputStream twoMarcSourcesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.source.query");
+    assertEquals(IOUtils.toString(twoMarcInstancesSQL), processor.getInstancePostQuery() + "\n");
+    assertEquals(IOUtils.toString(twoMarcSourcesSQL), processor.getSourcePostQuery() + "\n");
   }
 
   private BasicHttpResponse createDummyResponse() {

@@ -53,7 +53,8 @@ class Processor {
   private static final String TYPE = "type";
 
   private int processedCount;
-  private StringBuilder importSQLStatement = new StringBuilder();
+  private StringBuilder importSQLStatementInstance = new StringBuilder();
+  private StringBuilder importSQLStatementSource = new StringBuilder();
   private int counter;
   private int bulkSize;
   private JsonObject rulesFile;
@@ -63,7 +64,8 @@ class Processor {
   private boolean storeSource;
   private boolean isTest;
   private String fixedGeneralInstanceId;
-  private String lastInstancePostQuery;
+  private String instancePostQuery;
+  private String sourcePostQuery;
 
   private Leader leader;
   private String separator; //separator between subfields with different delimiters
@@ -101,8 +103,12 @@ class Processor {
     this.url = url;
   }
 
-  String getLastInstancePostQuery() {
-    return lastInstancePostQuery;
+  String getInstancePostQuery() {
+    return instancePostQuery;
+  }
+
+  String getSourcePostQuery() {
+    return sourcePostQuery;
   }
 
   void process(boolean isTest, InputStream entity, Context vertxContext,
@@ -145,7 +151,7 @@ class Processor {
       if (whenDone.succeeded()) {
         if (isTest) {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            LoadResource.PostLoadMarcDataTestResponse.withPlainCreated(importSQLStatement.toString())));
+            LoadResource.PostLoadMarcDataTestResponse.withPlainCreated(importSQLStatementInstance.toString())));
         } else {
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
             LoadResource.PostLoadMarcDataResponse.withCreated(whenDone.result().toString())));
@@ -177,6 +183,7 @@ class Processor {
 
       if (fixedGeneralInstanceId != null) {
         instance.setId(fixedGeneralInstanceId);
+        sourceRecord.setId(fixedGeneralInstanceId);
       }
 
       String error = managePushToDB(tenantId, false);
@@ -426,22 +433,43 @@ class Processor {
   private String managePushToDB(String tenantId, boolean done)
     throws JsonProcessingException {
 
-    if (importSQLStatement.length() == 0 && instance == null && done) {
+    if (importSQLStatementInstance.length() == 0 && instance == null && done) {
       //no more marcs to process, we reached the end of the loop, and we have no records in the buffer to flush to the db then just return,
       return null;
     }
 
-    if (importSQLStatement.length() == 0 && !isTest) {
-      importSQLStatement
+    if (importSQLStatementInstance.length() == 0 && !isTest) {
+      importSQLStatementInstance
         .append("COPY ")
         .append(tenantId)
         .append("_mod_inventory_storage.instance(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
-      importSQLStatement.append(System.lineSeparator());
+      importSQLStatementInstance.append(System.lineSeparator());
+
+      if (storeSource) {
+        importSQLStatementSource
+          .append("COPY ")
+          .append(tenantId)
+          .append("_mod_inventory_storage.source(_id,jsonb) FROM STDIN  DELIMITER '|' ENCODING 'UTF8';");
+        importSQLStatementSource.append(System.lineSeparator());
+      }
     }
 
     if (instance != null) {
-      importSQLStatement.append(instance.getId()).append("|").append(ObjectMapperTool.getMapper()
-        .writeValueAsString(instance)).append(System.lineSeparator());
+      importSQLStatementInstance
+        .append(instance.getId())
+        .append("|")
+        .append(ObjectMapperTool.getMapper().writeValueAsString(instance))
+        .append(System.lineSeparator());
+
+      if (storeSource) {
+        importSQLStatementSource
+          .append(sourceRecord.getId())
+          .append("|")
+//          .append(ObjectMapperTool.getMapper()
+//          .writeValueAsString(sourceRecord.getSourceJson().encode()))
+          .append(sourceRecord.getSourceJson().encode())
+          .append(System.lineSeparator());
+      }
     }
 
     counter++;
@@ -457,14 +485,26 @@ class Processor {
     counter = 0;
     try {
       if (!isTest) {
-        importSQLStatement.append("\\.");
-        lastInstancePostQuery = importSQLStatement.toString();
-        HttpResponse response = requester.post(url + IMPORT_URL , importSQLStatement, okapiHeaders);
-        importSQLStatement.setLength(0);
-        if (response.getStatusLine().getStatusCode() != 200) {
-          String e = IOUtils.toString( response.getEntity().getContent() , "UTF8");
+        importSQLStatementInstance.append("\\.");
+        instancePostQuery = importSQLStatementInstance.toString();
+        HttpResponse responseInstance = requester.post(url + IMPORT_URL , importSQLStatementInstance, okapiHeaders);
+        importSQLStatementInstance.setLength(0);
+        if (responseInstance.getStatusLine().getStatusCode() != 200) {
+          String e = IOUtils.toString( responseInstance.getEntity().getContent() , "UTF8");
           LOGGER.error(e);
           return e;
+        }
+
+        if (storeSource) {
+          importSQLStatementSource.append("\\.");
+          sourcePostQuery = importSQLStatementSource.toString();
+          HttpResponse responseSource = requester.post(url + IMPORT_URL , importSQLStatementSource, okapiHeaders);
+          importSQLStatementSource.setLength(0);
+          if (responseSource.getStatusLine().getStatusCode() != 200) {
+            String e = IOUtils.toString( responseSource.getEntity().getContent() , "UTF8");
+            LOGGER.error(e);
+            return e;
+          }
         }
       }
     } catch (Exception e) {
