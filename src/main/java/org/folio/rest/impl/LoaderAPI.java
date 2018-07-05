@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
@@ -19,14 +18,15 @@ import org.apache.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.client.HttpClientFactory;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.tools.utils.VertxUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 
 import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperOrString;
@@ -38,6 +38,7 @@ public class LoaderAPI implements LoadResource {
   private static final String TENANT_ID_NULL = TenantTool.calculateTenantId(null);
   private static final String TENANT_NOT_SET = "tenant not set";
   private static final String NOT_IMPLEMENTED = "Not implemented";
+  private static final String HEALTH_PATH = "/_/discovery/health";
 
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
@@ -121,35 +122,36 @@ public class LoaderAPI implements LoadResource {
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
     Processor processor = new Processor(tenantId, okapiHeaders, new Requester(), storeSource, null);
     processor.setUrl(storageURL);
-    HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
-    //check if inventory storage is responding
-    Map<String, String> headers = new HashMap<>();
-    headers.put("Accept", "text/plain");
-    CompletableFuture<org.folio.rest.tools.client.Response> resp = client.request( "/admin/health" , headers );
-    resp.whenComplete( (response, error) -> {
+    // check if inventory storage is responding
 
-      try {
+    // Must use plain HttpClient: RMB-182: "HTTPJsonResponseHandler fails on JSONArray: JsonMappingException"
 
-        if (error != null) {
-          LOGGER.error(error.getCause());
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
-          return;
-        }
-
-        if (response.getCode() != 200) {
-          LOGGER.error("Unable to connect to the inventory storage module at..." + storageURL);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
-        } else {
-          processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
-        }
-
-      } finally {
-        client.closeClient();
+    Boolean ssl = storageURL.startsWith("https://");
+    HttpClient client = VertxUtils.getVertxFromContextOrNew().createHttpClient(
+        new HttpClientOptions().setSsl(ssl).setTrustAll(true).setDefaultPort(ssl ? 443 : 80));
+    client.get(ssl ? storageURL.substring(8) : storageURL, HEALTH_PATH, response -> {
+      if (response.statusCode() == 200) {
+        client.close();
+        processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
+        return;
       }
-    });
+      String msg = "Got " + response.statusCode() + " from inventory storage module: "
+          + storageURL + HEALTH_PATH;
+      LOGGER.error(msg);
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+          PostLoadMarcDataResponse.withPlainBadRequest(msg)));
+      client.close();
+    })
+    .putHeader("Accept", "application/json")
+    .setTimeout(5000 /* ms */)
+    .exceptionHandler(e -> {
+      LOGGER.error("No health information from inventory storage module " + storageURL + HEALTH_PATH, e);
+      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+          PostLoadMarcDataResponse.withPlainBadRequest(
+              storageURL + HEALTH_PATH + ": " + e.getMessage())));
+      client.close();
+    }).end();
   }
 
   private boolean validRequest(Handler<AsyncResult<Response>> asyncResultHandler, Map<String, String> okapiHeaders){
