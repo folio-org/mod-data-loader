@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -31,14 +32,15 @@ import io.vertx.core.json.JsonObject;
 
 import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperOrString;
 
-
+/**
+ * Main class invoked by raml module builder (RMB): https://github.com/folio-org/raml-module-builder
+ */
 public class LoaderAPI implements LoadResource {
 
   private static final Logger LOGGER = LogManager.getLogger(LoaderAPI.class);
   private static final String TENANT_ID_NULL = TenantTool.calculateTenantId(null);
   private static final String TENANT_NOT_SET = "tenant not set";
   private static final String NOT_IMPLEMENTED = "Not implemented";
-  private static final String HEALTH_PATH = "/_/discovery/health";
 
   // rules are not stored in db as this is a test loading module
   static final Map<String, JsonObject> TENANT_RULES_MAP = new HashMap<>();
@@ -110,7 +112,7 @@ public class LoaderAPI implements LoadResource {
 
   @Validate
   @Override
-  public void postLoadMarcData(String storageURL, int bulkSize, boolean storeSource, InputStream entity,
+  public void postLoadMarcData(String okapiUrl, int bulkSize, boolean storeSource, InputStream entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
@@ -121,23 +123,23 @@ public class LoaderAPI implements LoadResource {
     this.bulkSize = bulkSize;
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
     Processor processor = new Processor(tenantId, okapiHeaders, new Requester(), storeSource, null);
-    processor.setUrl(storageURL);
+    processor.setUrl(okapiUrl);
 
     // check if inventory storage is responding
 
-    // Must use plain HttpClient: RMB-182: "HTTPJsonResponseHandler fails on JSONArray: JsonMappingException"
-
-    Boolean ssl = storageURL.startsWith("https://");
+    URL healthUrl = new URL(okapiUrl + System.getProperty("OKAPI_HEALTH_PATH", "/_/discovery/health"));
+    // healthUrl returns [] so we must use plain HttpClient because of
+    // RMB-182: "HTTPJsonResponseHandler fails on JSONArray: JsonMappingException"
+    Boolean ssl = "https".equals(healthUrl.getProtocol());
     HttpClient client = VertxUtils.getVertxFromContextOrNew().createHttpClient(
         new HttpClientOptions().setSsl(ssl).setTrustAll(true).setDefaultPort(ssl ? 443 : 80));
-    client.get(ssl ? storageURL.substring(8) : storageURL, HEALTH_PATH, response -> {
+    client.get(healthUrl.getHost(), healthUrl.getPath(), response -> {
       if (response.statusCode() == 200) {
         client.close();
         processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
         return;
       }
-      String msg = "Got " + response.statusCode() + " from inventory storage module: "
-          + storageURL + HEALTH_PATH;
+      String msg = "Got " + response.statusCode() + " from inventory storage module: " + healthUrl;
       LOGGER.error(msg);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
           PostLoadMarcDataResponse.withPlainBadRequest(msg)));
@@ -146,10 +148,9 @@ public class LoaderAPI implements LoadResource {
     .putHeader("Accept", "application/json")
     .setTimeout(5000 /* ms */)
     .exceptionHandler(e -> {
-      LOGGER.error("No health information from inventory storage module " + storageURL + HEALTH_PATH, e);
+      LOGGER.error("No health information from inventory storage module " + healthUrl, e);
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainBadRequest(
-              storageURL + HEALTH_PATH + ": " + e.getMessage())));
+          PostLoadMarcDataResponse.withPlainBadRequest(healthUrl + " - " + e.getMessage())));
       client.close();
     }).end();
   }
