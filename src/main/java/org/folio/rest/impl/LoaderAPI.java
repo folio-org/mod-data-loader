@@ -130,10 +130,8 @@ public class LoaderAPI implements LoadResource {
     URL healthUrl = new URL(okapiUrl + System.getProperty("OKAPI_HEALTH_PATH", "/_/discovery/health"));
     // healthUrl returns [] so we must use plain HttpClient because of
     // RMB-182: "HTTPJsonResponseHandler fails on JSONArray: JsonMappingException"
-    Boolean ssl = "https".equals(healthUrl.getProtocol());
-    HttpClient client = VertxUtils.getVertxFromContextOrNew().createHttpClient(
-        new HttpClientOptions().setSsl(ssl).setTrustAll(true).setDefaultPort(ssl ? 443 : 80));
-    client.get(healthUrl.getHost(), healthUrl.getPath(), response -> {
+    HttpClient client = createHttpClient(healthUrl);
+    client.get(healthUrl.getPath(), response -> {
       if (response.statusCode() == 200) {
         client.close();
         processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
@@ -153,6 +151,20 @@ public class LoaderAPI implements LoadResource {
           PostLoadMarcDataResponse.withPlainBadRequest(healthUrl + " - " + e.getMessage())));
       client.close();
     }).end();
+  }
+
+  static HttpClientOptions createHttpClientOptions(URL url) {
+    Boolean ssl = "https".equals(url.getProtocol());
+    int port = url.getPort();
+    if (port == -1) {
+      port = url.getDefaultPort();
+    }
+    return new HttpClientOptions().setSsl(ssl).setTrustAll(true)
+        .setDefaultHost(url.getHost()).setDefaultPort(port);
+  }
+
+  static HttpClient createHttpClient(URL url) {
+    return VertxUtils.getVertxFromContextOrNew().createHttpClient(createHttpClientOptions(url));
   }
 
   private boolean validRequest(Handler<AsyncResult<Response>> asyncResultHandler, Map<String, String> okapiHeaders){
