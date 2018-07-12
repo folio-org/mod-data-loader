@@ -5,11 +5,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
-import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
@@ -19,22 +19,19 @@ import org.apache.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.LoadResource;
 import org.folio.rest.tools.ClientGenerator;
+import org.folio.rest.tools.client.HttpClientFactory;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.tools.utils.VertxUtils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 
 import static org.folio.rest.service.LoaderHelper.isPrimitiveOrPrimitiveWrapperOrString;
 
-/**
- * Main class invoked by raml module builder (RMB): https://github.com/folio-org/raml-module-builder
- */
+
 public class LoaderAPI implements LoadResource {
 
   private static final Logger LOGGER = LogManager.getLogger(LoaderAPI.class);
@@ -112,7 +109,7 @@ public class LoaderAPI implements LoadResource {
 
   @Validate
   @Override
-  public void postLoadMarcData(String okapiUrl, int bulkSize, boolean storeSource, InputStream entity,
+  public void postLoadMarcData(String storageURL, int bulkSize, boolean storeSource, InputStream entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) throws Exception {
 
@@ -123,48 +120,36 @@ public class LoaderAPI implements LoadResource {
     this.bulkSize = bulkSize;
     String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT));
     Processor processor = new Processor(tenantId, okapiHeaders, new Requester(), storeSource, null);
-    processor.setUrl(okapiUrl);
+    processor.setUrl(storageURL);
+    HttpClientInterface client = HttpClientFactory.getHttpClient(storageURL, tenantId);
 
-    // check if inventory storage is responding
+    //check if inventory storage is responding
+    Map<String, String> headers = new HashMap<>();
+    headers.put("Accept", "text/plain");
+    CompletableFuture<org.folio.rest.tools.client.Response> resp = client.request( "/admin/health" , headers );
+    resp.whenComplete( (response, error) -> {
 
-    URL healthUrl = new URL(okapiUrl + System.getProperty("OKAPI_HEALTH_PATH", "/_/discovery/health"));
-    // healthUrl returns [] so we must use plain HttpClient because of
-    // RMB-182: "HTTPJsonResponseHandler fails on JSONArray: JsonMappingException"
-    HttpClient client = createHttpClient(healthUrl);
-    client.get(healthUrl.getPath(), response -> {
-      if (response.statusCode() == 200) {
-        client.close();
-        processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
-        return;
+      try {
+
+        if (error != null) {
+          LOGGER.error(error.getCause());
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
+          return;
+        }
+
+        if (response.getCode() != 200) {
+          LOGGER.error("Unable to connect to the inventory storage module at..." + storageURL);
+          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
+        } else {
+          processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
+        }
+
+      } finally {
+        client.closeClient();
       }
-      String msg = "Got " + response.statusCode() + " from inventory storage module: " + healthUrl;
-      LOGGER.error(msg);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainBadRequest(msg)));
-      client.close();
-    })
-    .putHeader("Accept", "application/json")
-    .setTimeout(5000 /* ms */)
-    .exceptionHandler(e -> {
-      LOGGER.error("No health information from inventory storage module " + healthUrl, e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-          PostLoadMarcDataResponse.withPlainBadRequest(healthUrl + " - " + e.getMessage())));
-      client.close();
-    }).end();
-  }
-
-  static HttpClientOptions createHttpClientOptions(URL url) {
-    Boolean ssl = "https".equals(url.getProtocol());
-    int port = url.getPort();
-    if (port == -1) {
-      port = url.getDefaultPort();
-    }
-    return new HttpClientOptions().setSsl(ssl).setTrustAll(true)
-        .setDefaultHost(url.getHost()).setDefaultPort(port);
-  }
-
-  static HttpClient createHttpClient(URL url) {
-    return VertxUtils.getVertxFromContextOrNew().createHttpClient(createHttpClientOptions(url));
+    });
   }
 
   private boolean validRequest(Handler<AsyncResult<Response>> asyncResultHandler, Map<String, String> okapiHeaders){
