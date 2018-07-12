@@ -26,8 +26,8 @@ https://github.com/folio-org/data-loader/blob/master/ramls/loader.raml
 Some notes:
 
  1. A tenant must be passed in the x-okapi-tenant header.
- 2. A rules files must be set for that tenant
- 3. The inventory-storage module must be available at the host / port indicated via the storageURL query parameter (this is checked before processing begins)
+ 2. A rules files must be set for that tenant.
+ 3. The inventory-storage module must be available at the host / port indicated via the storageURL query parameter (this is checked before processing begins). Direct access to mod-inventory-storage at storageURL is required to invoke /admin/importSQL, that endpoint is not available when invoked via Okapi.
 
 It is best to attach MARC files with the same amount of records as the batch size - this is not mandatory (default batch size is 50,000 records and can be changed via the `batchSize` query parameter)
 
