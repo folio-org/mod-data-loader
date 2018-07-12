@@ -63,10 +63,10 @@ schemas:
           Uploads a file and saves it to the specified tenant's instance table
       queryParameters:
         storageURL:
-          displayName: Okapi URL
+          displayName: StorageURL
           type: string
-          description: URL of the Okapi endpoint
-          example: http://example.com:9130/okapi
+          description: host and port of the inventory storage module
+          example: http://host:port
           required: true
         bulkSize:
           displayName: BulkSize
@@ -136,10 +136,10 @@ schemas:
           Uploads a file with 1..n static records and saves it to the specified tenant's table
       queryParameters:
         storageURL:
-          displayName: Okapi URL
+          displayName: StorageURL
           type: string
-          description: URL of the Okapi endpoint
-          example: http://example.com:9130/okapi
+          description: host and port of the inventory storage module
+          example: http://host:port
           required: true
       body:
         application/octet-stream:
