@@ -443,7 +443,7 @@ class Processor {
       beginSQLStatement(importSQLStatementInstance, "instance");
 
       if (storeSource) {
-        beginSQLStatement(importSQLStatementSource, "source");
+        beginSQLStatement(importSQLStatementSource, "instance_source_marc");
       }
     }
 
