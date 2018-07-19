@@ -1,18 +1,15 @@
 package org.folio.rest.impl;
 
-
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-import org.apache.commons.io.HexDump;
 import org.apache.http.ProtocolVersion;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.folio.util.IoUtil;
 import org.folio.util.ResourceUtil;
 import org.junit.*;
 import org.junit.runner.RunWith;
@@ -44,8 +41,7 @@ public class ProcessorTest {
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
     InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-    InputStream rules = this.getClass().getResourceAsStream("/rules.json");
-    JsonObject rulesFile = new JsonObject(IoUtil.toStringUtf8(rules));
+    JsonObject rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
     Map<String, String> okapiHeaders = new HashMap<>();
 
     processor = new Processor("testTenantId", okapiHeaders, requester, true,
@@ -64,8 +60,6 @@ public class ProcessorTest {
     LOGGER.info("\n---\nsqlQueriesTest()\n---");
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
-    HexDump.dump(sourcesSqlExpected.getBytes(),             0, System.err, 0);
-    HexDump.dump(processor.getSourcePostQuery().getBytes(), 0, System.err, 0);
     assertEquals(instancesSqlExpected, processor.getInstancePostQuery());
     assertEquals(sourcesSqlExpected,   processor.getSourcePostQuery());
   }
