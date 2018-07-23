@@ -140,7 +140,7 @@ class Processor {
 
         long end = System.currentTimeMillis();
         LOGGER.info("inserted " + processedCount + " in " + (end - start)/1000 + " seconds" );
-        block.complete("Received count: " + processedCount + "\nerrors: " + unprocessed.toString());
+        block.complete("Received count: " + processedCount + ", errors: " + unprocessed.toString());
 
       } catch(Exception e){
         block.fail(e);
