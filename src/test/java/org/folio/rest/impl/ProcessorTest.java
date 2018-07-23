@@ -1,16 +1,16 @@
 package org.folio.rest.impl;
 
-
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.io.IOUtils;
+
 import org.apache.http.ProtocolVersion;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.folio.util.ResourceUtil;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -41,8 +41,7 @@ public class ProcessorTest {
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
     InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-    InputStream rules = this.getClass().getResourceAsStream("/rules.json");
-    JsonObject rulesFile = new JsonObject(IOUtils.toString(rules));
+    JsonObject rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
     Map<String, String> okapiHeaders = new HashMap<>();
 
     processor = new Processor("testTenantId", okapiHeaders, requester, true,
@@ -59,10 +58,10 @@ public class ProcessorTest {
   @Test
   public void sqlQueriesTest() throws IOException {
     LOGGER.info("\n---\nsqlQueriesTest()\n---");
-    InputStream twoMarcInstancesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.instance.query");
-    InputStream twoMarcSourcesSQL = this.getClass().getResourceAsStream("/expected/msdb.bib.sub.source.query");
-    assertEquals(IOUtils.toString(twoMarcInstancesSQL), processor.getInstancePostQuery() + "\n");
-    assertEquals(IOUtils.toString(twoMarcSourcesSQL), processor.getSourcePostQuery() + "\n");
+    String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
+    String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
+    assertEquals(instancesSqlExpected, processor.getInstancePostQuery());
+    assertEquals(sourcesSqlExpected,   processor.getSourcePostQuery());
   }
 
   private BasicHttpResponse createDummyResponse() {

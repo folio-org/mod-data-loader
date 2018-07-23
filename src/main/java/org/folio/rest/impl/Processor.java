@@ -486,7 +486,7 @@ class Processor {
     counter = 0;
     try {
       if (!isTest) {
-        importSQLStatementInstance.append("\\.");
+        importSQLStatementInstance.append("\\.").append(System.lineSeparator());
         instancePostQuery = importSQLStatementInstance.toString();
         HttpResponse responseInstance = requester.post(url + IMPORT_URL , importSQLStatementInstance, okapiHeaders);
         importSQLStatementInstance.setLength(0);
@@ -497,7 +497,7 @@ class Processor {
         }
 
         if (storeSource) {
-          importSQLStatementSource.append("\\.");
+          importSQLStatementSource.append("\\.").append(System.lineSeparator());
           sourcePostQuery = importSQLStatementSource.toString();
           HttpResponse responseSource = requester.post(url + IMPORT_URL , importSQLStatementSource, okapiHeaders);
           importSQLStatementSource.setLength(0);
