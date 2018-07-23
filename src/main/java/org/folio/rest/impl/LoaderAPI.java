@@ -132,16 +132,19 @@ public class LoaderAPI implements LoadResource {
       try {
 
         if (error != null) {
-          LOGGER.error(error.getCause());
+          LOGGER.error(error.getMessage(), error);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module..." + error.getMessage())));
+            PostLoadMarcDataResponse.withPlainBadRequest(
+                "Unable to connect to the inventory storage module..." + error.getMessage())));
           return;
         }
 
         if (response.getCode() != 200) {
-          LOGGER.error("Unable to connect to the inventory storage module at..." + storageURL);
+          String msg = "Unable to connect to the inventory storage module at..."
+              + storageURL + ", response code = " + response.getCode();
+          LOGGER.error(msg);
           asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostLoadMarcDataResponse.withPlainBadRequest("Unable to connect to the inventory storage module at..." + storageURL)));
+            PostLoadMarcDataResponse.withPlainBadRequest(msg)));
         } else {
           processor.process(false, entity, vertxContext, asyncResultHandler, bulkSize);
         }
