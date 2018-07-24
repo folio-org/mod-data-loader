@@ -23,11 +23,44 @@ Exposes six APIs
 The RAML can be found here:
 https://github.com/folio-org/data-loader/blob/master/ramls/loader.raml
 
-Some notes:
+### Some notes
 
  1. A tenant must be passed in the x-okapi-tenant header.
  2. A rules files must be set for that tenant.
  3. The inventory-storage module must be available at the host / port indicated via the storageURL query parameter (this is checked before processing begins). Direct access to mod-inventory-storage at storageURL is required to invoke /admin/importSQL, that endpoint is not available when invoked via Okapi.
+
+### Example invocation
+
+Run mod-inventory-storage in first console:
+
+    cd mod-inventory-storage
+    mvn clean install
+    export DB_DATABASE=postgres
+    export DB_HOST=localhost
+    export DB_PASSWORD=postgres
+    export DB_PORT=5433
+    export DB_USERNAME=postgres
+    java -jar target/mod-inventory-storage-fat.jar -Dhttp.port=8080
+
+Run mod-data-loader using default port 8081 in second console:
+
+    cd mod-data-loader
+    mvn clean install
+    java -jar target/mod-data-loader-fat.jar
+
+Run data loader in third console:
+
+    cd mod-data-loader
+    curl -s -S -D - -H "X-Okapi-Tenant: diku" -H "Content-type: application/json" \
+      -X POST http://localhost:8080/_/tenant
+    curl -s -S -D - -H "X-Okapi-Tenant: diku" -H "Content-type: application/octet-stream" -H "Accept: text/plain" \
+      -d \@src/test/resources/rules.json \
+      http://localhost:8081/load/marc-rules
+    curl -s -S -D - -H "X-Okapi-Tenant: diku" -H "Content-type: application/octet-stream" -H "Accept: text/plain" \
+      -d \@src/test/resources/msplit00000000.mrc \
+      http://localhost:8081/load/marc-data?storageURL=http://localhost:8080\&storeSource=true
+
+### MARC files
 
 It is best to attach MARC files with the same amount of records as the batch size - this is not mandatory (default batch size is 50,000 records and can be changed via the `batchSize` query parameter)
 
@@ -36,6 +69,8 @@ It is best to attach MARC files with the same amount of records as the batch siz
 You can call the `/load/marc-data` API multiple times on different MARC files - this should improve loading performance (the amount of concurrent calls depends on the amount of hardware on the server)
 
 A records position in the uploaded file will be present in the `X-Unprocessed` header for each MARC record that was not parsed correctly.
+
+### Conversion rules
 
 Control fields can be used to insert constant values into instance fields. For example, the below will insert the value Books into the instanceTypeId field if all conditions of this rule are met. Multiple rules may be declared. The `LDR` field indicates that the condition should be tested against the MARC's Leader field data.
 
