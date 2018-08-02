@@ -111,6 +111,10 @@ class Processor {
     return sourcePostQuery;
   }
 
+  SourceRecord getSourceRecord() {
+    return sourceRecord;
+  }
+
   void process(boolean isTest, InputStream entity, Context vertxContext,
                Handler<AsyncResult<Response>> asyncResultHandler, int bulkSize){
 
@@ -201,6 +205,7 @@ class Processor {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
     marcJsonWriter.write(record);
+    marcJsonWriter.close();
     String recordSourceAsJson = baos.toString();
     sourceRecord = new SourceRecord(id, new JsonObject(recordSourceAsJson));
   }
