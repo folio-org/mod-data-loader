@@ -1,0 +1,210 @@
+{
+	"leader":"00724nam a2200205Ii 4500",
+	"fields":
+	[
+		{
+			"001":"005000002-0"
+		},
+		{
+			"005":"20020606095253.2"
+		},
+		{
+			"008":"780811s1769    enka          000 0 eng d"
+		},
+		{
+			"035":
+			{
+				"subfields":
+				[
+					{
+						"a":"ocm04129547"
+					}
+				],
+				"ind1":"0",
+				"ind2":" "
+			}
+
+		},
+		{
+			"040":
+			{
+				"subfields":
+				[
+					{
+						"a":"EEM"
+					},
+					{
+						"c":"EEM"
+					},
+					{
+						"d":"HHG"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"090":
+			{
+				"subfields":
+				[
+					{
+						"a":"PR1134"
+					},
+					{
+						"b":".C6"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"245":
+			{
+				"subfields":
+				[
+					{
+						"a":"A companion for a leisure hour :"
+					},
+					{
+						"c":"being a collection of fugitive pieces in prose and verse / by several gentlemen."
+					}
+				],
+				"ind1":"0",
+				"ind2":"2"
+			}
+
+		},
+		{
+			"260":
+			{
+				"subfields":
+				[
+					{
+						"a":"London :"
+					},
+					{
+						"b":"J. Almon,"
+					},
+					{
+						"c":"1769."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"300":
+			{
+				"subfields":
+				[
+					{
+						"a":"vi, 164 p. (incl. front.) :"
+					},
+					{
+						"b":"ill. ;"
+					},
+					{
+						"c":"17 cm."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"500":
+			{
+				"subfields":
+				[
+					{
+						"a":"\"By Samuel Derrick\"--Halkett & Laing."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"500":
+			{
+				"subfields":
+				[
+					{
+						"a":"Includes verse of Goldsmith, Johnson, Soame Jenyns, William Woty & others."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"650":
+			{
+				"subfields":
+				[
+					{
+						"a":"English literature."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"700":
+			{
+				"subfields":
+				[
+					{
+						"a":"Derrick, Samuel,"
+					},
+					{
+						"d":"1724-1769."
+					}
+				],
+				"ind1":"1",
+				"ind2":" "
+			}
+
+		},
+		{
+			"988":
+			{
+				"subfields":
+				[
+					{
+						"a":"20020608"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"906":
+			{
+				"subfields":
+				[
+					{
+						"0":"OCLC"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		}
+	]
+}
