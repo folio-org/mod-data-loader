@@ -27,7 +27,10 @@ public class ProcessorTest {
 
   private static final Logger LOGGER = LogManager.getLogger(ProcessorTest.class);
   private Vertx vertx;
-  private Processor processor;
+  private Processor processor1;
+  private Processor processor2;
+  private Map<String, String> okapiHeaders;
+  private JsonObject rulesFile;
 
   @Mock
   private Requester requester;
@@ -41,13 +44,19 @@ public class ProcessorTest {
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
     InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-    JsonObject rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
-    Map<String, String> okapiHeaders = new HashMap<>();
+    InputStream oneEntryWQuotationM = this.getClass().getResourceAsStream("/sourceRecords/one-entry-with-quotation-marks.mrc");
+    rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
+    okapiHeaders = new HashMap<>();
 
-    processor = new Processor("testTenantId", okapiHeaders, requester, true,
+    processor1 = new Processor("testTenantId", okapiHeaders, requester, true,
       "my-test-id");
-    processor.setRulesFile(rulesFile);
-    processor.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
+    processor1.setRulesFile(rulesFile);
+    processor1.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
+
+    processor2 = new Processor("testTenantId", okapiHeaders, requester, true,
+      "my-test-id");
+    processor2.setRulesFile(rulesFile);
+    processor2.process(false, oneEntryWQuotationM, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 5);
   }
 
   @After
@@ -60,8 +69,16 @@ public class ProcessorTest {
     LOGGER.info("\n---\nsqlQueriesTest()\n---");
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
-    assertEquals(instancesSqlExpected, processor.getInstancePostQuery());
-    assertEquals(sourcesSqlExpected,   processor.getSourcePostQuery());
+    assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
+    assertEquals(sourcesSqlExpected,   processor1.getSourcePostQuery());
+  }
+
+  @Test
+  public void escapeQuotationMarksInJsonTest(TestContext ctx) throws IOException {
+    LOGGER.info("\n---\nescapeQuotationMarksInJsonTest()\n---");
+    String json = ResourceUtil.asString("expected/one-entry-with-quotation-marks.json");
+    String jsonExpected = new JsonObject(json).encode();
+    assertEquals(jsonExpected, processor2.getSourceRecord().getSourceJson().encode());
   }
 
   private BasicHttpResponse createDummyResponse() {
