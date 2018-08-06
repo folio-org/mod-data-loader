@@ -460,10 +460,11 @@ class Processor {
         .append(System.lineSeparator());
 
       if (storeSource) {
+        String doubleEscapedSourceRecord = doubleEscapeJsonString(sourceRecord.getSourceJson().encode());
         importSQLStatementSource
           .append(sourceRecord.getId())
           .append("|")
-          .append(sourceRecord.getSourceJson().encode())
+          .append(doubleEscapedSourceRecord)
           .append(System.lineSeparator());
       }
     }
@@ -475,6 +476,16 @@ class Processor {
       errorMessage = closeAndPostSQL();
     }
     return errorMessage;
+  }
+
+  private String doubleEscapeJsonString(String json) {
+
+    String sqlDoubleEscapedJson;
+
+    //TODO: turn all '\"' into '\\"'
+    sqlDoubleEscapedJson = json;
+
+    return sqlDoubleEscapedJson;
   }
 
   private void beginSQLStatement(StringBuilder importSQLStatement, String tableName) {
