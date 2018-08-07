@@ -66,4 +66,8 @@ public class Escaper {
     return data;
   }
 
+  public static String backslashEscape(String s) {
+    return s.replace("\\", "\\\\");
+  }
+
 }
