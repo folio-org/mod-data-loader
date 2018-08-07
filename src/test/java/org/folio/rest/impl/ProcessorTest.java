@@ -69,8 +69,10 @@ public class ProcessorTest {
     LOGGER.info("\n---\nsqlQueriesTest()\n---");
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
+    String escapeQuotesSqlExpected   = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
     assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
     assertEquals(sourcesSqlExpected,   processor1.getSourcePostQuery());
+    assertEquals(escapeQuotesSqlExpected, processor2.getSourcePostQuery());
   }
 
   @Test
