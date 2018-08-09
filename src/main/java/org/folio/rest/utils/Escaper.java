@@ -69,6 +69,11 @@ public class Escaper {
     return data;
   }
 
+  /**
+   * Escapes characters within a given json string to be able to 'COPY' to postgres jsonb
+   * @param s json string to be escaped
+   * @return escaped string
+   */
   public static String escapeSqlCopyFrom(String s) {
     return StringUtils.replaceEach(s,
       new String[]{"\\", "|", "\n", "\r"},
