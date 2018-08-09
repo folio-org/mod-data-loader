@@ -463,7 +463,7 @@ class Processor {
         importSQLStatementSource
           .append(sourceRecord.getId())
           .append("|")
-          .append(Escaper.backslashEscape(sourceRecord.getSourceJson().encode()))
+          .append(Escaper.escapeSqlCopyFrom(sourceRecord.getSourceJson().encode()))
           .append(System.lineSeparator());
       }
     }
