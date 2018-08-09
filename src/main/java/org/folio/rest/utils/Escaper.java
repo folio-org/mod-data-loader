@@ -1,5 +1,8 @@
 package org.folio.rest.utils;
 
+
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * Escape text so that it is valid json as well as valid postgres jsonb data
  *
@@ -64,6 +67,18 @@ public class Escaper {
     }
     data = removeEscapedChars(data).replaceAll("\\\"", "\\\\\"");
     return data;
+  }
+
+  /**
+   * Escapes characters within a given json string to be able to 'COPY' to postgres jsonb
+   * @param s json string to be escaped
+   * @return escaped string
+   */
+  public static String escapeSqlCopyFrom(String s) {
+    return StringUtils.replaceEach(s,
+      new String[]{"\\", "|", "\n", "\r"},
+      new String[]{"\\\\", "\\|", "\\\n", "\\\r"}
+    );
   }
 
 }
