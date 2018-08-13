@@ -76,12 +76,14 @@ public class ProcessorTest {
     // load files for expected output
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
-    String escapeQuotesSqlExpected   = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
+    String escapeQuotesSqlExpected = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
+    String entryUnclearErrorExpected = ResourceUtil.asString("expected/entry-with-unclear-error.query");
 
     // assert with processed
     assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
     assertEquals(sourcesSqlExpected,   processor1.getSourcePostQuery());
     assertEquals(escapeQuotesSqlExpected, processor2.getSourcePostQuery());
+    assertEquals(entryUnclearErrorExpected, processor3.getSourcePostQuery());
 
     LOGGER.info("\n---\njson asserts\n---");
 
