@@ -47,7 +47,7 @@ public class ProcessorTest {
     InputStream oneEntryWQuotationM = this.getClass().getResourceAsStream(
       "/sourceRecords/one-entry-with-quotation-marks.mrc");
     InputStream oneEntry = this.getClass().getResourceAsStream(
-      "/sourceRecords/entry-with-unclear-error.mrc");
+      "/sourceRecords/fuga.mrc");
 
     JsonObject rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
     Map<String, String> okapiHeaders = new HashMap<>();
@@ -77,7 +77,7 @@ public class ProcessorTest {
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
     String escapeQuotesSqlExpected = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
-    String entryUnclearErrorExpected = ResourceUtil.asString("expected/entry-with-unclear-error.query");
+    String entryUnclearErrorExpected = ResourceUtil.asString("expected/fuga.query");
 
     // assert with processed
     assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
@@ -91,7 +91,7 @@ public class ProcessorTest {
     String oneEntryWithQuotationMarks = new JsonObject(
       ResourceUtil.asString("expected/one-entry-with-quotation-marks.json")).encode();
     String entryWithUnclearError = new JsonObject(
-      ResourceUtil.asString("expected/entry-with-unclear-error.json")).encode();
+      ResourceUtil.asString("expected/fuga.json")).encode();
 
     // assert with processed
     assertEquals(oneEntryWithQuotationMarks, processor2.getSourceRecord().getSourceJson().encode());
