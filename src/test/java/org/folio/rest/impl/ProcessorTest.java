@@ -29,8 +29,7 @@ public class ProcessorTest {
   private Vertx vertx;
   private Processor processor1;
   private Processor processor2;
-  private Map<String, String> okapiHeaders;
-  private JsonObject rulesFile;
+  private Processor processor3;
 
   @Mock
   private Requester requester;
@@ -43,20 +42,25 @@ public class ProcessorTest {
     BasicHttpResponse dummyResponse = createDummyResponse();
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
-    InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-    InputStream oneEntryWQuotationM = this.getClass().getResourceAsStream("/sourceRecords/one-entry-with-quotation-marks.mrc");
-    rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
-    okapiHeaders = new HashMap<>();
+    InputStream twoMarcInstances = this.getClass().getResourceAsStream(
+      "/sourceRecords/msdb.bib.sub");
+    InputStream oneEntryWQuotationM = this.getClass().getResourceAsStream(
+      "/sourceRecords/one-entry-with-quotation-marks.mrc");
+    InputStream oneEntry = this.getClass().getResourceAsStream(
+      "/sourceRecords/entry-with-unclear-error.mrc");
+
+    JsonObject rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
+    Map<String, String> okapiHeaders = new HashMap<>();
 
     processor1 = new Processor("testTenantId", okapiHeaders, requester, true,
       "my-test-id");
     processor1.setRulesFile(rulesFile);
-    processor1.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
+    processor2 = new Processor(processor1);
+    processor3 = new Processor(processor1);
 
-    processor2 = new Processor("testTenantId", okapiHeaders, requester, true,
-      "my-test-id");
-    processor2.setRulesFile(rulesFile);
+    processor1.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
     processor2.process(false, oneEntryWQuotationM, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 5);
+    processor3.process(false, oneEntry, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 5);
   }
 
   @After
@@ -65,22 +69,31 @@ public class ProcessorTest {
   }
 
   @Test
-  public void sqlQueriesTest() throws IOException {
-    LOGGER.info("\n---\nsqlQueriesTest()\n---");
+  public void sqlQueriesAndJsonTest() throws IOException {
+
+    LOGGER.info("\n---\nsql query asserts\n---");
+
+    // load files for expected output
     String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
     String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
     String escapeQuotesSqlExpected   = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
+
+    // assert with processed
     assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
     assertEquals(sourcesSqlExpected,   processor1.getSourcePostQuery());
     assertEquals(escapeQuotesSqlExpected, processor2.getSourcePostQuery());
-  }
 
-  @Test
-  public void escapeQuotationMarksInJsonTest(TestContext ctx) throws IOException {
-    LOGGER.info("\n---\nescapeQuotationMarksInJsonTest()\n---");
-    String json = ResourceUtil.asString("expected/one-entry-with-quotation-marks.json");
-    String jsonExpected = new JsonObject(json).encode();
-    assertEquals(jsonExpected, processor2.getSourceRecord().getSourceJson().encode());
+    LOGGER.info("\n---\njson asserts\n---");
+
+    // load files for expected output
+    String oneEntryWithQuotationMarks = new JsonObject(
+      ResourceUtil.asString("expected/one-entry-with-quotation-marks.json")).encode();
+    String entryWithUnclearError = new JsonObject(
+      ResourceUtil.asString("expected/entry-with-unclear-error.json")).encode();
+
+    // assert with processed
+    assertEquals(oneEntryWithQuotationMarks, processor2.getSourceRecord().getSourceJson().encode());
+    assertEquals(entryWithUnclearError, processor3.getSourceRecord().getSourceJson().encode());
   }
 
   private BasicHttpResponse createDummyResponse() {
