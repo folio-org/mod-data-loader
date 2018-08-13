@@ -1,0 +1,339 @@
+{
+	"leader":"01028nam a2200313 a 4500",
+	"fields":
+	[
+		{
+			"001":"005000060-8"
+		},
+		{
+			"005":"20020606095253.2"
+		},
+		{
+			"008":"941123s1993    it       b    000|0 ita d"
+		},
+		{
+			"020":
+			{
+				"subfields":
+				[
+					{
+						"a":"8809203445"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"035":
+			{
+				"subfields":
+				[
+					{
+						"a":"ocm43661266"
+					}
+				],
+				"ind1":"0",
+				"ind2":" "
+			}
+
+		},
+		{
+			"100":
+			{
+				"subfields":
+				[
+					{
+						"a":"Arcangeli Sibbel, Anna."
+					}
+				],
+				"ind1":"1",
+				"ind2":" "
+			}
+
+		},
+		{
+			"240":
+			{
+				"subfields":
+				[
+					{
+						"a":"Fuga da Berlino"
+					}
+				],
+				"ind1":"1",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"245":
+			{
+				"subfields":
+				[
+					{
+						"a":"Fuga da Berlino /"
+					},
+					{
+						"c":"Anna Arcangeli Sibbel. La traversia / Assunta Rossi."
+					}
+				],
+				"ind1":"1",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"246":
+			{
+				"subfields":
+				[
+					{
+						"a":"Traversia."
+					}
+				],
+				"ind1":"3",
+				"ind2":" "
+			}
+
+		},
+		{
+			"260":
+			{
+				"subfields":
+				[
+					{
+						"a":"Firenze :"
+					},
+					{
+						"b":"Giunti,"
+					},
+					{
+						"c":"1993."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"300":
+			{
+				"subfields":
+				[
+					{
+						"a":"175 p. ;"
+					},
+					{
+						"c":"21 cm."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"490":
+			{
+				"subfields":
+				[
+					{
+						"a":"Diario italiano ;"
+					},
+					{
+						"v":"9"
+					}
+				],
+				"ind1":"1",
+				"ind2":" "
+			}
+
+		},
+		{
+			"504":
+			{
+				"subfields":
+				[
+					{
+						"a":"Includes bibliographical references."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"500":
+			{
+				"subfields":
+				[
+					{
+						"a":"Includes Archivio diaristico nazionale, Catalogo inediti, 1993."
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"650":
+			{
+				"subfields":
+				[
+					{
+						"a":"World War, 1939-1945"
+					},
+					{
+						"v":"Personal narratives, German."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"600":
+			{
+				"subfields":
+				[
+					{
+						"a":"Arcangeli Sibbel, Anna."
+					}
+				],
+				"ind1":"2",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"650":
+			{
+				"subfields":
+				[
+					{
+						"a":"World War, 1939-1945"
+					},
+					{
+						"x":"Women."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"600":
+			{
+				"subfields":
+				[
+					{
+						"a":"Rossi, Assunta."
+					}
+				],
+				"ind1":"1",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"650":
+			{
+				"subfields":
+				[
+					{
+						"a":"Women and war."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"650":
+			{
+				"subfields":
+				[
+					{
+						"a":"World War, 1939-1945"
+					},
+					{
+						"v":"Personal narratives, Italian."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"700":
+			{
+				"subfields":
+				[
+					{
+						"a":"Rossi, Assunta."
+					},
+					{
+						"t":"Traversia."
+					}
+				],
+				"ind1":"1",
+				"ind2":"2"
+			}
+
+		},
+		{
+			"830":
+			{
+				"subfields":
+				[
+					{
+						"a":"Diario italiano ;"
+					},
+					{
+						"v":"9."
+					}
+				],
+				"ind1":" ",
+				"ind2":"0"
+			}
+
+		},
+		{
+			"988":
+			{
+				"subfields":
+				[
+					{
+						"a":"20020608"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		},
+		{
+			"906":
+			{
+				"subfields":
+				[
+					{
+						"0":"MH"
+					}
+				],
+				"ind1":" ",
+				"ind2":" "
+			}
+
+		}
+	]
+}
