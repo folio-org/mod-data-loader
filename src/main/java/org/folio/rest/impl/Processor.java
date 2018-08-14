@@ -95,6 +95,15 @@ class Processor {
     this.fixedGeneralInstanceId = fixedGeneralInstanceId;
   }
 
+  Processor(Processor original) {
+    this.okapiHeaders = original.okapiHeaders;
+    this.tenantId = original.tenantId;
+    this.rulesFile = original.rulesFile;
+    this.requester = original.requester;
+    this.storeSource = original.storeSource;
+    this.fixedGeneralInstanceId = original.fixedGeneralInstanceId;
+  }
+
   void setRulesFile(JsonObject rulesFile) {
     this.rulesFile = rulesFile;
   }

@@ -2,14 +2,13 @@ package org.folio.rest.impl;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import org.apache.http.ProtocolVersion;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.folio.util.ResourceUtil;
 import org.junit.*;
 import org.junit.runner.RunWith;
@@ -24,13 +23,8 @@ import java.util.Map;
 
 @RunWith(VertxUnitRunner.class)
 public class ProcessorTest {
-
-  private static final Logger LOGGER = LogManager.getLogger(ProcessorTest.class);
   private Vertx vertx;
-  private Processor processor1;
-  private Processor processor2;
-  private Map<String, String> okapiHeaders;
-  private JsonObject rulesFile;
+  JsonObject rulesFile;
 
   @Mock
   private Requester requester;
@@ -43,20 +37,7 @@ public class ProcessorTest {
     BasicHttpResponse dummyResponse = createDummyResponse();
     when(requester.post(anyString(), any(), anyMap())).thenReturn(dummyResponse);
 
-    InputStream twoMarcInstances = this.getClass().getResourceAsStream("/sourceRecords/msdb.bib.sub");
-    InputStream oneEntryWQuotationM = this.getClass().getResourceAsStream("/sourceRecords/one-entry-with-quotation-marks.mrc");
     rulesFile = new JsonObject(ResourceUtil.asString("rules.json"));
-    okapiHeaders = new HashMap<>();
-
-    processor1 = new Processor("testTenantId", okapiHeaders, requester, true,
-      "my-test-id");
-    processor1.setRulesFile(rulesFile);
-    processor1.process(false, twoMarcInstances, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 20);
-
-    processor2 = new Processor("testTenantId", okapiHeaders, requester, true,
-      "my-test-id");
-    processor2.setRulesFile(rulesFile);
-    processor2.process(false, oneEntryWQuotationM, vertx.getOrCreateContext(), ctx.asyncAssertSuccess(), 5);
   }
 
   @After
@@ -64,29 +45,60 @@ public class ProcessorTest {
     vertx.close(ctx.asyncAssertSuccess());
   }
 
-  @Test
-  public void sqlQueriesTest() throws IOException {
-    LOGGER.info("\n---\nsqlQueriesTest()\n---");
-    String instancesSqlExpected = ResourceUtil.asString("expected/msdb.bib.sub.instance.query");
-    String sourcesSqlExpected   = ResourceUtil.asString("expected/msdb.bib.sub.source.query");
-    String escapeQuotesSqlExpected   = ResourceUtil.asString("expected/one-entry-with-quotation-marks-double-escape.query");
-    assertEquals(instancesSqlExpected, processor1.getInstancePostQuery());
-    assertEquals(sourcesSqlExpected,   processor1.getSourcePostQuery());
-    assertEquals(escapeQuotesSqlExpected, processor2.getSourcePostQuery());
-  }
-
-  @Test
-  public void escapeQuotationMarksInJsonTest(TestContext ctx) throws IOException {
-    LOGGER.info("\n---\nescapeQuotationMarksInJsonTest()\n---");
-    String json = ResourceUtil.asString("expected/one-entry-with-quotation-marks.json");
-    String jsonExpected = new JsonObject(json).encode();
-    assertEquals(jsonExpected, processor2.getSourceRecord().getSourceJson().encode());
-  }
-
   private BasicHttpResponse createDummyResponse() {
     return new BasicHttpResponse(
       new BasicStatusLine(
       new ProtocolVersion("http", 1, 1), 200, "OK")
     );
+  }
+
+  private Processor process(TestContext ctx, String mrcFile, int bulkSize) {
+    Async async = ctx.async();
+    InputStream twoMarcInstances = this.getClass().getResourceAsStream(mrcFile);
+    Map<String, String> okapiHeaders = new HashMap<>();
+    Processor processor = new Processor("testTenantId", okapiHeaders, requester, true,
+        "my-test-id");
+    processor.setRulesFile(rulesFile);
+    processor.process(false, twoMarcInstances, vertx.getOrCreateContext(),
+        result -> async.complete(), bulkSize);
+    async.awaitSuccess();
+    return processor;
+  }
+
+  private void assertInstancePostQuery(String expectedFile, Processor processor)
+      throws IOException {
+    assertEquals(ResourceUtil.asString(expectedFile), processor.getInstancePostQuery());
+  }
+
+  private void assertSourcePostQuery(String expectedFile, Processor processor)
+      throws IOException {
+    assertEquals(ResourceUtil.asString(expectedFile), processor.getSourcePostQuery());
+  }
+
+  private void assertSourceJson(String expectedFile, Processor processor)
+      throws IOException {
+    String expected = new JsonObject(ResourceUtil.asString(expectedFile)).encode();
+    assertEquals(expected, processor.getSourceRecord().getSourceJson().encode());
+  }
+
+  @Test
+  public void msdb(TestContext ctx) throws IOException {
+    Processor processor = process(ctx, "/sourceRecords/msdb.bib.sub", 20);
+    assertInstancePostQuery("expected/msdb.bib.sub.instance.query", processor);
+    assertSourcePostQuery  ("expected/msdb.bib.sub.source.query",   processor);
+  }
+
+  @Test
+  public void oneEntryWithQuotationMarks(TestContext ctx) throws IOException {
+    Processor processor = process(ctx, "/sourceRecords/one-entry-with-quotation-marks.mrc", 5);
+    assertSourcePostQuery("expected/one-entry-with-quotation-marks-double-escape.query", processor);
+    assertSourceJson     ("expected/one-entry-with-quotation-marks.json",                processor);
+  }
+
+  @Test
+  public void oneEntryFuga(TestContext ctx) throws IOException {
+    Processor processor = process(ctx, "/sourceRecords/fuga.mrc", 5);
+    assertSourcePostQuery("expected/fuga.query", processor);
+    assertSourceJson     ("expected/fuga.json",  processor);
   }
 }
