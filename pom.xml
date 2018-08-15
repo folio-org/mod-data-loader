@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-data-loader</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1-SNAPSHOT</version>
 
   <licenses>
     <license>
@@ -100,7 +100,7 @@
     <url>https://github.com/folio-org/mod-data-loader</url>
     <connection>scm:git:git://github.com:folio-org/mod-data-loader.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-data-loader.git</developerConnection>
-    <tag>v0.1.0</tag>
+    <tag>HEAD</tag>
   </scm>
 
 
