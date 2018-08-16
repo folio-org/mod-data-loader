@@ -51,5 +51,11 @@
         }
       ]
     }
+  ],
+  "requires": [
+    {
+      "id": "instance-storage",
+      "version": "4.4"
+    }
   ]
 }
