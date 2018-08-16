@@ -1,0 +1,6 @@
+{
+  "srvcId": "${artifactId}-${version}",
+  "descriptor": {
+    "exec": "java -jar ../mod-data-loader/target/mod-data-loader-fat.jar -Dhttp.port=%p"
+  }
+}

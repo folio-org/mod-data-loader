@@ -1,0 +1,61 @@
+{
+  "id": "${artifactId}-${version}",
+  "name": "Data Loader Module",
+  "provides": [
+    {
+      "id": "data-loader",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["POST"],
+          "pathPattern": "/load/marc-rules"
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/load/marc-rules"
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/load/marc-data"
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/load/marc-data"
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/load/marc-data/test"
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/load/static"
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/load/static"
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/load/static/test"
+        }
+      ]
+    },
+    {
+      "id": "_tenant",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": [ "POST" ],
+          "pathPattern": "/_/tenant"
+        }
+      ]
+    }
+  ],
+  "requires": [
+    {
+      "id": "instance-storage",
+      "version": "4.4"
+    }
+  ]
+}
