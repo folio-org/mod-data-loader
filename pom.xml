@@ -15,7 +15,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <ramlfiles_path>${basedir}/ramls/inventory,${basedir}/ramls</ramlfiles_path>
-    <vertx-version>3.4.1</vertx-version>
+    <vertx-version>3.5.4</vertx-version>
   </properties>
 
   <repositories>
@@ -334,6 +334,11 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.15</version>
         <configuration>
+          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
+               https://issues.folio.org/browse/FOLIO-1609
+               https://issues.apache.org/jira/browse/SUREFIRE-1588
+          -->
+          <useSystemClassLoader>false</useSystemClassLoader>
           <!-- Surefire should use UTF-8 encoding when reading files
                https://stackoverflow.com/questions/17656475/maven-source-encoding-in-utf-8-not-working#answer-17671104
           -->
