@@ -11,6 +11,13 @@ RMB-based module used to load test data.
 
 Currently supports loading binary MARC records into the mod-inventory-storage instance table.
 
+How to build:
+
+    git clone https://github.com/folio-org/mod-data-loader
+    cd mod-data-loader
+    git submodule update --init
+    mvn clean install
+
 ## APIs
 Exposes six APIs
 1. POST `/load/marc-rules` - uploads a [rules json](https://github.com/folio-org/test-data-loader/blob/master/ramls/rules.json) file to use when mapping marc fields to instance fields. The rules file is only stored in memory and will be associated with the tenant passed in the x-okapi-tenant header
