@@ -5,6 +5,12 @@ Copyright (C) 2017-2020 The Open Library Foundation
 This software is distributed under the terms of the Apache License,
 Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
+## DEPRECATED
+
+This repository is deprecated and no longer maintained. Use 
+[mod-data-import load-marc-data-into-folio.sh](https://github.com/folio-org/mod-data-import#script-to-upload-a-batch-of-marc-records)
+instead. 
+
 ## Introduction
 
 RMB-based module used to load test data.
